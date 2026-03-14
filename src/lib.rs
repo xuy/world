@@ -18,6 +18,7 @@ pub mod domains;
 pub mod execution;
 pub mod plugin;
 pub mod policy;
+pub mod sampling;
 pub mod schemas;
 pub mod spec;
 pub mod telemetry;

@@ -98,6 +98,31 @@ pub enum Command {
         domain: Option<String>,
     },
 
+    /// Sample an observation over time — repeated observe + reduce
+    ///
+    /// Takes N snapshots at a fixed interval, then reduces numeric fields
+    /// into statistics (mean, min, max, delta, rate). Domain-agnostic —
+    /// works with any observable domain.
+    Sample {
+        /// Domain to observe
+        domain: String,
+        /// Number of samples to take
+        #[arg(long, default_value = "5")]
+        count: u32,
+        /// Interval between samples (e.g. 2s, 500ms, 1m)
+        #[arg(long, default_value = "2s")]
+        interval: String,
+        /// Specific target within the domain
+        #[arg(long)]
+        target: Option<String>,
+        /// Comma-separated scopes
+        #[arg(long, value_delimiter = ',')]
+        scope: Option<Vec<String>>,
+        /// Maximum number of results per sample
+        #[arg(long)]
+        limit: Option<u32>,
+    },
+
     /// List tools and universal verb set
     Tools,
 
@@ -195,6 +220,17 @@ pub async fn run(cli: Cli) -> ExitCode {
                 &registry, &telemetry, mode, &domain, &target, &verb, &args, dry_run, yes,
             )
             .await
+        }
+
+        Command::Sample {
+            domain,
+            count,
+            interval,
+            target,
+            scope,
+            limit,
+        } => {
+            run_sample(&registry, mode, &domain, count, &interval, target, scope, limit).await
         }
 
         Command::Spec { domain, core } => {
@@ -368,4 +404,95 @@ async fn run_act(
             ExitCode::from(1)
         }
     }
+}
+
+// ─── Sample ─────────────────────────────────────────────────────────────────
+
+async fn run_sample(
+    registry: &PluginRegistry,
+    mode: OutputMode,
+    domain_str: &str,
+    count: u32,
+    interval: &str,
+    target: Option<String>,
+    scope: Option<Vec<String>>,
+    limit: Option<u32>,
+) -> ExitCode {
+    use crate::sampling;
+
+    let plugin = match registry.get(domain_str) {
+        Some(p) => p,
+        None => {
+            let r = UnifiedResult::err("invalid_domain", format!("Unknown domain: {domain_str}"));
+            format_result(mode, &r);
+            return ExitCode::from(1);
+        }
+    };
+
+    let interval_ms = match sampling::parse_duration_ms(interval) {
+        Ok(ms) => ms,
+        Err(msg) => {
+            let r = UnifiedResult::err("invalid_interval", msg);
+            format_result(mode, &r);
+            return ExitCode::from(1);
+        }
+    };
+
+    if count < 2 {
+        let r = UnifiedResult::err("invalid_count", "Sample count must be at least 2.");
+        format_result(mode, &r);
+        return ExitCode::from(1);
+    }
+
+    // Collect samples
+    let start = Instant::now();
+    let mut samples: Vec<serde_json::Value> = Vec::with_capacity(count as usize);
+
+    for i in 0..count {
+        if i > 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(interval_ms)).await;
+        }
+
+        let result = plugin
+            .observe(target.as_deref(), scope.as_deref(), None, limit)
+            .await;
+
+        match result {
+            Ok(r) => {
+                if let Some(details) = r.details {
+                    samples.push(details);
+                }
+            }
+            Err(e) => {
+                let r = UnifiedResult::err("sample_error", format!("Sample {i} failed: {e}"));
+                format_result(mode, &r);
+                return ExitCode::from(1);
+            }
+        }
+    }
+
+    let duration_ms = start.elapsed().as_millis() as u64;
+    let duration_sec = duration_ms as f64 / 1000.0;
+
+    // Reduce
+    let reduced = sampling::reduce(&samples, duration_sec, sampling::IDENTITY_KEYS);
+
+    let sample_result = sampling::SampleResult {
+        sampling: sampling::SamplingMeta {
+            count,
+            interval_ms,
+            duration_ms,
+        },
+        result: reduced,
+    };
+
+    let r = UnifiedResult::ok(
+        format!(
+            "{count} samples over {:.1}s (interval: {interval}).",
+            duration_sec
+        ),
+        serde_json::to_value(&sample_result).unwrap_or_default(),
+    );
+    format_result(mode, &r);
+    ExitCode::from(0)
 }
