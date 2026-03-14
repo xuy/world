@@ -408,7 +408,7 @@ pub fn format_tools(mode: OutputMode) {
         ),
         (
             "spec",
-            "POMDP spec — observations + actions",
+            "Domain spec — observations + actions",
             "world spec [domain]",
         ),
     ];
@@ -431,7 +431,7 @@ pub fn format_tools(mode: OutputMode) {
             );
         }
         OutputMode::Pretty => {
-            println!("{}", "world — POMDP interface for agents".bold());
+            println!("{}", "world — a partially observable interface for agents".bold());
             println!();
             println!("{}", "Commands:".dimmed());
             for (name, desc, usage) in &tools {

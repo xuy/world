@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 
 use crate::contracts::observe::ObserveDomain;
 
-/// Core-only spec. This is the POMDP definition: observations + actions.
+/// Core-only spec: observations + actions.
 /// Pure declaration — what the world looks like and what verbs exist.
 pub fn core_spec(domain: ObserveDomain) -> Value {
     match domain {

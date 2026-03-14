@@ -1,4 +1,4 @@
-//! World — POMDP interface for agents.
+//! World — a partially observable interface for agents.
 //!
 //! A neutral framework. Every domain is a plugin:
 //! - Native Rust plugins for performance (network, service, disk, ...)

@@ -36,7 +36,7 @@ pub trait DomainPlugin: Send + Sync {
     /// Domain name (e.g., "network", "pip").
     fn domain(&self) -> &str;
 
-    /// POMDP spec: observations + actions.
+    /// Domain spec: observations + actions.
     fn spec(&self) -> &Value;
 
     /// Dispatch table: (target_pattern, verb) → handler.

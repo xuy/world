@@ -21,7 +21,7 @@ use output::{format_result, format_spec, format_tools, OutputMode};
 // ─── CLI definition ─────────────────────────────────────────────────────────
 
 #[derive(Parser)]
-#[command(name = "world", version, about = "Observe \u{00b7} Act — a POMDP interface for agents")]
+#[command(name = "world", version, about = "Observe \u{00b7} Act — a partially observable interface for agents")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
@@ -77,7 +77,7 @@ pub enum Command {
         yes: bool,
     },
 
-    /// Show POMDP spec — observations + actions + add-on contributions
+    /// Show domain spec — observations + actions
     Spec {
         /// Domain to show (omit for all domains)
         domain: Option<String>,
