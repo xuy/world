@@ -103,12 +103,8 @@ fn format_field(key: &str, val: &serde_json::Value, indent: usize) {
                 if let Some(s) = item.as_str() {
                     println!("{pad}  - {s}");
                 } else if let Some(obj) = item.as_object() {
-                    let summary: Vec<String> = obj
-                        .iter()
-                        .take(4)
-                        .map(|(k, v)| format!("{}={}", k, format_value_short(v)))
-                        .collect();
-                    println!("{pad}  - {}", summary.join(", "));
+                    let summary = format_object_summary(obj);
+                    println!("{pad}  - {}", summary);
                 } else {
                     println!("{pad}  - {}", format_value_short(item));
                 }
@@ -138,6 +134,55 @@ fn format_field(key: &str, val: &serde_json::Value, indent: usize) {
             println!("{pad}{} {}", key.cyan(), format_value_short(val));
         }
     }
+}
+
+/// Format an object for display, leading with the identity/name field.
+fn format_object_summary(obj: &serde_json::Map<String, serde_json::Value>) -> String {
+    use colored::Colorize;
+
+    // Identity fields in priority order — the first one found leads the display
+    const IDENTITY_FIELDS: &[&str] = &["name", "pid", "id", "path", "subject"];
+
+    let identity = IDENTITY_FIELDS
+        .iter()
+        .find_map(|&k| obj.get(k).map(|v| (k, v)));
+
+    let mut parts = Vec::new();
+
+    if let Some((key, val)) = identity {
+        // Lead with the identity field, bolded — this is also the drillable target
+        let val_str = match val {
+            serde_json::Value::String(s) => s.clone(),
+            serde_json::Value::Number(n) => n.to_string(),
+            other => format_value_short(other),
+        };
+        parts.push(format!("{}", val_str.bold()));
+
+        // Then add remaining fields (skip the identity field and boring fields)
+        for (k, v) in obj {
+            if k == key {
+                continue;
+            }
+            // Skip fields that are always true/obvious or too verbose
+            if matches!(v, serde_json::Value::Bool(true)) && (k == "installed" || k == "exists") {
+                continue;
+            }
+            parts.push(format!("{}={}", k, format_value_short(v)));
+        }
+    } else {
+        // No identity field — fall back to first 4 fields
+        for (k, v) in obj.iter().take(4) {
+            parts.push(format!("{}={}", k, format_value_short(v)));
+        }
+    }
+
+    // Truncate if too many fields
+    if parts.len() > 5 {
+        parts.truncate(5);
+        parts.push("...".to_string());
+    }
+
+    parts.join("  ")
 }
 
 fn format_value_short(v: &serde_json::Value) -> String {
