@@ -87,6 +87,9 @@ fn format_result_pretty(result: &UnifiedResult) {
             for (key, val) in obj {
                 format_field(key, val, 2);
             }
+        } else if let Some(arr) = details.as_array() {
+            // Top-level array (e.g. package list, service list)
+            format_field("items", &serde_json::Value::Array(arr.clone()), 2);
         }
     }
 }
@@ -385,18 +388,28 @@ pub fn format_tools(mode: OutputMode) {
     let tools = vec![
         (
             "observe",
-            "Read-only structured system state (O)",
-            "world observe <domain> [--scope ...] [--target ...]",
+            "Read state",
+            "world observe <domain> [target]",
         ),
         (
             "act",
-            "Finite verbs on schema paths (A)",
-            "world act <domain> <target> <verb> [key=value ...]",
+            "Change state",
+            "world act <domain> <target> <verb>",
+        ),
+        (
+            "await",
+            "Block until condition is true",
+            "world await <domain> <condition> [target]",
+        ),
+        (
+            "sample",
+            "Observe over time",
+            "world sample <domain> [target] --count N --interval T",
         ),
         (
             "spec",
-            "POMDP definition — observations + actions + add-ons",
-            "world spec [domain] [--core]",
+            "POMDP spec — observations + actions",
+            "world spec [domain]",
         ),
     ];
 
