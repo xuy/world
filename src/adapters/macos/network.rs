@@ -8,12 +8,22 @@ use crate::schemas::{InterfaceType, NetworkInterface, NetworkState};
 pub async fn observe(
     target: Option<&str>,
 ) -> Result<UnifiedResult> {
-    // Target selects what to include. None = everything.
-    let scopes: Vec<&str> = match target {
-        Some(t) => t.split(',').collect(),
-        None => vec!["interfaces", "dns", "gateway", "internet_status"],
-    };
+    // Target interpretation:
+    //   None               → everything
+    //   "interfaces"       → all interfaces
+    //   "dns"              → DNS config
+    //   "gateway"          → gateway/routing
+    //   "internet_status"  → reachability check
+    //   "proxy"            → proxy settings
+    //   "en0" / anything else → search interfaces by name, return match
+    match target {
+        Some("dns") => return observe_aspect_dns().await,
+        Some("internet_status") => return observe_aspect_internet().await,
+        Some("proxy") => return observe_aspect_proxy().await,
+        _ => {} // "interfaces", specific name, or None — all need interface data
+    }
 
+    // Fetch full interface state (needed for "interfaces", specific name, and default)
     let mut state = NetworkState {
         interfaces: vec![],
         internet_reachable: None,
@@ -23,42 +33,43 @@ pub async fn observe(
     };
     let mut warnings = Vec::new();
 
-    if scopes.contains(&"interfaces") || scopes.contains(&"gateway") || scopes.contains(&"dns") {
-        // Get interface info
-        let ifconfig = exec("ifconfig", &[], ExecOpts::default()).await?;
-        state.interfaces = parse_interfaces(&ifconfig.stdout);
+    let ifconfig = exec("ifconfig", &[], ExecOpts::default()).await?;
+    state.interfaces = parse_interfaces(&ifconfig.stdout);
 
-        // Get Wi-Fi info
-        let wifi = exec("networksetup", &["-getinfo", "Wi-Fi"], ExecOpts::default()).await;
-        if let Ok(ref wifi_res) = wifi {
-            enrich_wifi_info(&mut state, &wifi_res.stdout);
-        }
-
-        // Get DNS
-        let dns = exec("scutil", &["--dns"], ExecOpts::default()).await?;
-        enrich_dns_info(&mut state, &dns.stdout);
-
-        // Detect VPN
-        state.vpn_present = Some(
-            state.interfaces.iter().any(|i| {
-                matches!(i.iface_type, Some(InterfaceType::Vpn))
-                    || i.name.starts_with("utun")
-                    || i.name.starts_with("ipsec")
-            }),
-        );
+    let wifi = exec("networksetup", &["-getinfo", "Wi-Fi"], ExecOpts::default()).await;
+    if let Ok(ref wifi_res) = wifi {
+        enrich_wifi_info(&mut state, &wifi_res.stdout);
     }
 
-    if scopes.contains(&"proxy") {
-        let proxy = exec("networksetup", &["-getwebproxy", "Wi-Fi"], ExecOpts::default()).await;
-        if let Ok(ref res) = proxy {
-            state.proxy_enabled = Some(res.stdout.contains("Enabled: Yes"));
+    let dns = exec("scutil", &["--dns"], ExecOpts::default()).await?;
+    enrich_dns_info(&mut state, &dns.stdout);
+
+    state.vpn_present = Some(
+        state.interfaces.iter().any(|i| {
+            matches!(i.iface_type, Some(InterfaceType::Vpn))
+                || i.name.starts_with("utun")
+                || i.name.starts_with("ipsec")
+        }),
+    );
+
+    // If target is a specific name (not "interfaces" and not None), filter to it
+    if let Some(t) = target {
+        if t != "interfaces" && t != "gateway" {
+            // Search interfaces by name
+            state.interfaces.retain(|i| i.name == t);
+            if state.interfaces.is_empty() {
+                return Ok(UnifiedResult::err(
+                    "not_found",
+                    format!("Interface '{t}' not found. Use 'world observe network interfaces' to list all."),
+                ));
+            }
         }
     }
 
-    if scopes.contains(&"internet_status") {
+    // For default (no target), also check internet
+    if target.is_none() {
         let ping = exec("ping", &["-c", "1", "-W", "3", "8.8.8.8"], ExecOpts::default()).await;
         state.internet_reachable = Some(ping.map(|r| r.success()).unwrap_or(false));
-
         if state.internet_reachable == Some(false) {
             warnings.push("Internet appears unreachable (ping to 8.8.8.8 failed).".into());
         }
@@ -76,6 +87,39 @@ pub async fn observe(
         "verify(dns_resolves, target: \"google.com\")".into(),
         "act(network, flush_dns)".into(),
     ]))
+}
+
+async fn observe_aspect_dns() -> Result<UnifiedResult> {
+    let dns = exec("scutil", &["--dns"], ExecOpts::default()).await?;
+    // Extract resolver entries
+    let servers: Vec<String> = dns
+        .stdout
+        .lines()
+        .filter(|l| l.contains("nameserver"))
+        .map(|l| l.trim().replace("nameserver[0] : ", "").replace("nameserver[1] : ", "").trim().to_string())
+        .collect();
+    Ok(UnifiedResult::ok(
+        format!("{} DNS servers configured.", servers.len()),
+        json!({"dns_servers": servers}),
+    ))
+}
+
+async fn observe_aspect_internet() -> Result<UnifiedResult> {
+    let ping = exec("ping", &["-c", "1", "-W", "3", "8.8.8.8"], ExecOpts::default()).await;
+    let reachable = ping.map(|r| r.success()).unwrap_or(false);
+    Ok(UnifiedResult::ok(
+        if reachable { "Internet is reachable." } else { "Internet appears unreachable." },
+        json!({"internet_reachable": reachable}),
+    ))
+}
+
+async fn observe_aspect_proxy() -> Result<UnifiedResult> {
+    let proxy = exec("networksetup", &["-getwebproxy", "Wi-Fi"], ExecOpts::default()).await;
+    let enabled = proxy.map(|r| r.stdout.contains("Enabled: Yes")).unwrap_or(false);
+    Ok(UnifiedResult::ok(
+        if enabled { "Web proxy is enabled." } else { "No web proxy configured." },
+        json!({"proxy_enabled": enabled}),
+    ))
 }
 
 pub async fn act(
