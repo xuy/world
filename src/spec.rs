@@ -143,32 +143,6 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
             "actions": []
         }),
 
-        ObserveDomain::Share => json!({
-            "domain": "share",
-            "observations": {},
-            "actions": [
-                { "target": "<path>",      "verbs": ["add", "remove"], "description": "Map or disconnect a network share" },
-                { "target": "credentials", "verbs": ["reset"],         "description": "Refresh share credentials" }
-            ]
-        }),
-
-        ObserveDomain::Identity => json!({
-            "domain": "identity",
-            "observations": {},
-            "actions": [
-                { "target": "credentials", "verbs": ["clear", "reset"], "description": "Clear cached credentials" },
-                { "target": "account",     "verbs": ["restart"],        "description": "Re-authenticate account" }
-            ]
-        }),
-
-        ObserveDomain::Security => json!({
-            "domain": "security",
-            "observations": {},
-            "actions": [
-                { "target": "<rule>", "verbs": ["add", "remove"], "description": "Allow or remove a firewall rule" }
-            ]
-        }),
-
         ObserveDomain::Process => json!({
             "domain": "process",
             "observations": {
@@ -241,37 +215,6 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
             ]
         }),
 
-        ObserveDomain::Certificate => json!({
-            "domain": "certificate",
-            "observations": {
-                "certificates": {
-                    "type": "array",
-                    "item": {
-                        "subject": "string",
-                        "issuer": "string",
-                        "not_before": "string",
-                        "not_after": "string",
-                        "days_until_expiry": "integer",
-                        "is_expired": "bool",
-                        "is_self_signed": "bool",
-                        "san": ["string"],
-                        "key_algorithm": "string | null",
-                        "key_size": "integer | null",
-                        "fingerprint_sha256": "string | null",
-                        "chain_position": "leaf | intermediate | root | null",
-                        "source": "remote | local_file | keychain"
-                    }
-                },
-                "warnings": ["string"]
-            },
-            "actions": [
-                { "target": "<name>", "verbs": ["add"],     "description": "Install certificate to trust store" },
-                { "target": "<name>", "verbs": ["remove"],  "description": "Remove certificate from trust store" },
-                { "target": "<name>", "verbs": ["enable"],  "description": "Mark certificate as trusted" },
-                { "target": "<name>", "verbs": ["disable"], "description": "Mark certificate as untrusted" }
-            ]
-        }),
-
         _ => json!({
             "domain": domain.as_str(),
             "observations": {},
@@ -288,10 +231,6 @@ pub const SPEC_DOMAINS: &[ObserveDomain] = &[
     ObserveDomain::Printer,
     ObserveDomain::Package,
     ObserveDomain::Log,
-    ObserveDomain::Share,
-    ObserveDomain::Identity,
-    ObserveDomain::Security,
     ObserveDomain::Process,
     ObserveDomain::Container,
-    ObserveDomain::Certificate,
 ];

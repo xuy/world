@@ -39,9 +39,12 @@ impl Tool for VerifyTool {
                     "type": "string",
                     "enum": [
                         "service_healthy", "port_open", "host_reachable",
-                        "dns_resolves", "printer_prints", "share_accessible",
-                        "package_installed", "disk_writable", "login_works",
-                        "internet_reachable"
+                        "dns_resolves", "printer_prints",
+                        "package_installed", "disk_writable",
+                        "internet_reachable",
+                        "process_running", "process_stopped", "port_free",
+                        "container_running", "container_healthy",
+                        "image_exists", "volume_exists"
                     ],
                     "description": "The condition to verify."
                 },

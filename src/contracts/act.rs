@@ -10,12 +10,8 @@ pub enum ActDomain {
     Printer,
     Disk,
     Package,
-    Share,
-    Identity,
-    Security,
     Process,
     Container,
-    Certificate,
 }
 
 /// Arguments for the `act` tool.
@@ -70,19 +66,6 @@ pub fn allowed_actions(domain: ActDomain) -> &'static [&'static str] {
             "repair_package",
             "update_package",
         ],
-        ActDomain::Share => &[
-            "map_share",
-            "disconnect_share",
-            "refresh_credentials",
-        ],
-        ActDomain::Identity => &[
-            "clear_cached_credentials",
-            "re_authenticate_account",
-        ],
-        ActDomain::Security => &[
-            "allow_firewall_rule",
-            "remove_firewall_rule",
-        ],
         ActDomain::Process => &[
             "kill_graceful",
             "kill_force",
@@ -96,12 +79,6 @@ pub fn allowed_actions(domain: ActDomain) -> &'static [&'static str] {
             "pull_image",
             "prune_images",
             "prune_volumes",
-        ],
-        ActDomain::Certificate => &[
-            "install_cert",
-            "remove_cert",
-            "trust_cert",
-            "untrust_cert",
         ],
     }
 }

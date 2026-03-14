@@ -1,4 +1,3 @@
-pub mod certificate;
 pub mod container;
 pub mod disk;
 pub mod log;

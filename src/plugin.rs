@@ -247,24 +247,6 @@ pub fn native_plugins(platform: Platform) -> Vec<Box<dyn DomainPlugin>> {
             platform,
         )),
         Box::new(NativePlugin::new(
-            "share",
-            ObserveDomain::Share,
-            Some(ActDomain::Share),
-            platform,
-        )),
-        Box::new(NativePlugin::new(
-            "identity",
-            ObserveDomain::Identity,
-            Some(ActDomain::Identity),
-            platform,
-        )),
-        Box::new(NativePlugin::new(
-            "security",
-            ObserveDomain::Security,
-            Some(ActDomain::Security),
-            platform,
-        )),
-        Box::new(NativePlugin::new(
             "process",
             ObserveDomain::Process,
             Some(ActDomain::Process),
@@ -274,12 +256,6 @@ pub fn native_plugins(platform: Platform) -> Vec<Box<dyn DomainPlugin>> {
             "container",
             ObserveDomain::Container,
             Some(ActDomain::Container),
-            platform,
-        )),
-        Box::new(NativePlugin::new(
-            "certificate",
-            ObserveDomain::Certificate,
-            Some(ActDomain::Certificate),
             platform,
         )),
     ]

@@ -39,9 +39,6 @@ impl Addon for PolicyAddon {
             ObserveDomain::Disk => ActDomain::Disk,
             ObserveDomain::Printer => ActDomain::Printer,
             ObserveDomain::Package => ActDomain::Package,
-            ObserveDomain::Share => ActDomain::Share,
-            ObserveDomain::Identity => ActDomain::Identity,
-            ObserveDomain::Security => ActDomain::Security,
             _ => return None,
         };
 

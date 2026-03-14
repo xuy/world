@@ -103,25 +103,7 @@ impl Addon for VerifyAddon {
                 }
             ]),
 
-            ObserveDomain::Share => json!([
-                {
-                    "name": "share_accessible",
-                    "params": { "target": { "type": "string", "description": "share path" } },
-                    "observes": "share.connectivity",
-                    "asserts": "share is mounted and readable",
-                    "returns": { "passed": "bool" }
-                }
-            ]),
 
-            ObserveDomain::Identity => json!([
-                {
-                    "name": "login_works",
-                    "params": { "target": { "type": "string", "description": "account name" } },
-                    "observes": "identity.credentials",
-                    "asserts": "cached credentials are valid",
-                    "returns": { "passed": "bool" }
-                }
-            ]),
 
             _ => return None,
         };

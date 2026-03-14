@@ -144,7 +144,6 @@ fn test_policy_risk_classification() {
     assert_eq!(policy::classify_risk(ActDomain::Network, "flush_dns"), Risk::Low);
     assert_eq!(policy::classify_risk(ActDomain::Service, "restart_service"), Risk::Medium);
     assert_eq!(policy::classify_risk(ActDomain::Package, "install_package"), Risk::High);
-    assert_eq!(policy::classify_risk(ActDomain::Security, "allow_firewall_rule"), Risk::High);
 }
 
 #[test]

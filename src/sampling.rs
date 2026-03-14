@@ -79,7 +79,7 @@ fn reduce_value(samples: &[Value], duration_sec: f64, id_keys: &[&str]) -> Value
     match &samples[0] {
         Value::Number(_) => {
             // All samples should be numbers — compute stats
-            let nums: Vec<f64> = samples.iter().filter_map(|v| as_f64(v)).collect();
+            let nums: Vec<f64> = samples.iter().filter_map(as_f64).collect();
             if nums.is_empty() {
                 return samples.last().cloned().unwrap_or(Value::Null);
             }
@@ -122,11 +122,7 @@ fn reduce_value(samples: &[Value], duration_sec: f64, id_keys: &[&str]) -> Value
                         key.clone(),
                         field_samples.last().cloned().unwrap_or(Value::Null),
                     );
-                } else if field_samples.iter().all(|v| v.is_number()) {
-                    result.insert(key.clone(), reduce_value(&field_samples, duration_sec, id_keys));
-                } else if field_samples.iter().all(|v| v.is_array()) {
-                    result.insert(key.clone(), reduce_value(&field_samples, duration_sec, id_keys));
-                } else if field_samples.iter().all(|v| v.is_object()) {
+                } else if field_samples.iter().all(|v| v.is_number() || v.is_array() || v.is_object()) {
                     result.insert(key.clone(), reduce_value(&field_samples, duration_sec, id_keys));
                 } else {
                     // Non-reducible (strings, bools, mixed) — take last

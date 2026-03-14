@@ -38,7 +38,7 @@ impl Tool for ActTool {
             "properties": {
                 "domain": {
                     "type": "string",
-                    "enum": ["network", "service", "printer", "disk", "package", "share", "identity", "security"],
+                    "enum": ["network", "service", "printer", "disk", "package", "process", "container"],
                     "description": "The domain to act on."
                 },
                 "action": {

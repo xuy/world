@@ -258,54 +258,6 @@ pub struct VolumeInfo {
     pub size_bytes: Option<u64>,
 }
 
-/// Normalized certificate state.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CertificateState {
-    pub certificates: Vec<CertInfo>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub warnings: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CertInfo {
-    pub subject: String,
-    pub issuer: String,
-    pub not_before: String,
-    pub not_after: String,
-    pub days_until_expiry: i32,
-    pub is_expired: bool,
-    pub is_self_signed: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub san: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub key_algorithm: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub key_size: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fingerprint_sha256: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub chain_position: Option<ChainPosition>,
-    pub source: CertSource,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub trusted: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ChainPosition {
-    Leaf,
-    Intermediate,
-    Root,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum CertSource {
-    Remote,
-    LocalFile,
-    Keychain,
-}
-
 /// Normalized log entries.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogEntries {

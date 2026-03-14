@@ -26,8 +26,6 @@ pub fn classify_risk(domain: ActDomain, action: &str) -> Risk {
         (ActDomain::Network, "forget_wifi") => Risk::High,
         (ActDomain::Printer, "reinstall_printer_driver") => Risk::High,
         (ActDomain::Package, _) => Risk::High,
-        (ActDomain::Security, _) => Risk::High,
-        (ActDomain::Identity, _) => Risk::High,
         (ActDomain::Service, "set_startup_mode") => Risk::High,
 
         // Process
@@ -43,9 +41,6 @@ pub fn classify_risk(domain: ActDomain, action: &str) -> Risk {
         (ActDomain::Container, "pull_image") => Risk::Low,
         (ActDomain::Container, "prune_images") => Risk::High,
         (ActDomain::Container, "prune_volumes") => Risk::High,
-
-        // Certificate — all high risk (system-wide TLS impact)
-        (ActDomain::Certificate, _) => Risk::High,
 
         // Default to medium for unknown actions
         _ => Risk::Medium,

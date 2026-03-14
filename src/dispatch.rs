@@ -52,20 +52,6 @@ pub fn entries(domain: &str) -> &'static [Entry] {
             Entry { target: "<name>", verb: "reset",  handler: "repair_package" },
             Entry { target: "<name>", verb: "set",    handler: "update_package" },
         ],
-        "share" => &[
-            Entry { target: "<path>",      verb: "add",    handler: "map_share" },
-            Entry { target: "<path>",      verb: "remove", handler: "disconnect_share" },
-            Entry { target: "credentials", verb: "reset",  handler: "refresh_credentials" },
-        ],
-        "identity" => &[
-            Entry { target: "credentials", verb: "clear",   handler: "clear_cached_credentials" },
-            Entry { target: "credentials", verb: "reset",   handler: "clear_cached_credentials" },
-            Entry { target: "account",     verb: "restart", handler: "re_authenticate_account" },
-        ],
-        "security" => &[
-            Entry { target: "<rule>", verb: "add",    handler: "allow_firewall_rule" },
-            Entry { target: "<rule>", verb: "remove", handler: "remove_firewall_rule" },
-        ],
         "process" => &[
             Entry { target: "<pid>",          verb: "kill",   handler: "kill_graceful" },
             Entry { target: "<pid>",          verb: "remove", handler: "kill_force" },
@@ -79,12 +65,6 @@ pub fn entries(domain: &str) -> &'static [Entry] {
             Entry { target: "<image>", verb: "add",     handler: "pull_image" },
             Entry { target: "images",  verb: "clear",   handler: "prune_images" },
             Entry { target: "volumes", verb: "clear",   handler: "prune_volumes" },
-        ],
-        "certificate" => &[
-            Entry { target: "<name>", verb: "add",     handler: "install_cert" },
-            Entry { target: "<name>", verb: "remove",  handler: "remove_cert" },
-            Entry { target: "<name>", verb: "enable",  handler: "trust_cert" },
-            Entry { target: "<name>", verb: "disable", handler: "untrust_cert" },
         ],
         _ => &[],
     }

@@ -50,12 +50,6 @@ pub fn resolve_condition(domain: &str, condition: &str) -> Option<VerifyCheck> {
         ("container", "image_exists") => Some(VerifyCheck::ImageExists),
         ("container", "volume_exists") => Some(VerifyCheck::VolumeExists),
 
-        // Certificate
-        ("certificate", "valid") => Some(VerifyCheck::CertValid),
-        ("certificate", "not_expired") => Some(VerifyCheck::CertNotExpired),
-        ("certificate", "chain_complete") => Some(VerifyCheck::CertChainComplete),
-        ("certificate", "hostname_matches") => Some(VerifyCheck::HostnameMatches),
-
         // Disk
         ("disk", "writable") => Some(VerifyCheck::DiskWritable),
 
@@ -76,7 +70,6 @@ pub fn conditions_for(domain: &str) -> &'static [&'static str] {
         "service" => &["healthy"],
         "process" => &["running", "stopped", "port_free"],
         "container" => &["running", "healthy", "image_exists", "volume_exists"],
-        "certificate" => &["valid", "not_expired", "chain_complete", "hostname_matches"],
         "disk" => &["writable"],
         "package" => &["installed"],
         "printer" => &["prints"],

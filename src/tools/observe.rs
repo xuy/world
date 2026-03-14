@@ -37,7 +37,7 @@ impl Tool for ObserveTool {
             "properties": {
                 "domain": {
                     "type": "string",
-                    "enum": ["system", "network", "service", "process", "disk", "printer", "identity", "package", "log", "share", "security"],
+                    "enum": ["system", "network", "service", "process", "disk", "printer", "package", "log", "container"],
                     "description": "The system domain to observe."
                 },
                 "target": {
