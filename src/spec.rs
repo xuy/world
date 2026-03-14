@@ -1,0 +1,191 @@
+//! Core world spec — the Single Source of Truth for what the world looks like.
+//!
+//! Every domain's observation schema AND action space (target + verb + args)
+//! is defined here. This is a pure declaration — no dispatch wiring.
+//!
+//! Dispatch wiring (which function handles which verb) lives in `dispatch.rs`.
+//!
+//! Future: this will be loadable from external JSON/YAML files or generated
+//! by plugins in any language.
+
+use serde_json::{json, Value};
+
+use crate::contracts::observe::ObserveDomain;
+
+/// Core-only spec. This is the POMDP definition: observations + actions.
+/// Pure declaration — what the world looks like and what verbs exist.
+pub fn core_spec(domain: ObserveDomain) -> Value {
+    match domain {
+        ObserveDomain::Network => json!({
+            "domain": "network",
+            "observations": {
+                "interfaces": {
+                    "type": "array",
+                    "item": {
+                        "name": "string",
+                        "up": "bool",
+                        "addresses": ["string"],
+                        "gateway": "string | null",
+                        "dns_servers": ["string"],
+                        "type": "ethernet | wifi | vpn | loopback | other"
+                    }
+                },
+                "internet_reachable": "bool | null",
+                "proxy_enabled": "bool | null",
+                "vpn_present": "bool | null",
+                "warnings": ["string"]
+            },
+            "actions": [
+                { "target": "dns_cache",         "verbs": ["reset"],             "description": "Flush DNS cache" },
+                { "target": "dhcp_lease",        "verbs": ["reset"],             "description": "Renew DHCP lease" },
+                { "target": "interfaces.<name>", "verbs": ["enable", "disable"], "description": "Toggle network interface" },
+                { "target": "wifi.<ssid>",       "verbs": ["remove"],            "description": "Forget WiFi network" },
+                { "target": "wifi",              "verbs": ["restart"],           "description": "Reconnect WiFi" },
+                { "target": "proxy",             "verbs": ["reset"],             "description": "Reset proxy settings" }
+            ]
+        }),
+
+        ObserveDomain::Service => json!({
+            "domain": "service",
+            "observations": {
+                "name": "string",
+                "exists": "bool",
+                "status": "running | stopped | degraded | unknown",
+                "startup_mode": "auto | manual | disabled | unknown | null",
+                "pid": "integer | null",
+                "recent_errors": ["string"],
+                "dependencies": ["string"]
+            },
+            "actions": [
+                { "target": "<name>",              "verbs": ["restart"],           "description": "Restart a service" },
+                { "target": "<name>",              "verbs": ["enable"],            "description": "Start a service" },
+                { "target": "<name>",              "verbs": ["disable"],           "description": "Stop a service" },
+                { "target": "<name>.startup_mode", "verbs": ["set"],              "description": "Set startup mode", "args": { "mode": { "type": "string", "enum": ["auto", "manual", "disabled"] } } }
+            ]
+        }),
+
+        ObserveDomain::Disk => json!({
+            "domain": "disk",
+            "observations": {
+                "mounts": {
+                    "type": "array",
+                    "item": {
+                        "path": "string",
+                        "filesystem": "string",
+                        "total_bytes": "integer",
+                        "used_bytes": "integer",
+                        "available_bytes": "integer",
+                        "percent_used": "float"
+                    }
+                },
+                "warnings": ["string"]
+            },
+            "actions": [
+                { "target": "temp",   "verbs": ["clear", "reset"], "description": "Clear temporary files" },
+                { "target": "caches", "verbs": ["clear", "reset"], "description": "Remove known large caches (brew, npm, pip)" },
+                { "target": "<path>", "verbs": ["add", "remove"],  "description": "Mount/unmount a share" }
+            ]
+        }),
+
+        ObserveDomain::Printer => json!({
+            "domain": "printer",
+            "observations": {
+                "name": "string",
+                "installed": "bool",
+                "status": "ready | offline | error | unknown",
+                "is_default": "bool | null",
+                "queue_jobs": "integer | null",
+                "driver": "string | null",
+                "port": "string | null",
+                "host_reachable": "bool | null",
+                "recent_errors": ["string"]
+            },
+            "actions": [
+                { "target": "<name>.queue",  "verbs": ["clear"],   "description": "Clear print queue" },
+                { "target": "spooler",       "verbs": ["restart"], "description": "Restart print spooler" },
+                { "target": "default",       "verbs": ["set"],     "description": "Set default printer", "args": { "name": { "type": "string", "description": "printer name" } } },
+                { "target": "<name>.driver", "verbs": ["reset"],   "description": "Reinstall printer driver" }
+            ]
+        }),
+
+        ObserveDomain::Package => json!({
+            "domain": "package",
+            "observations": {
+                "name": "string",
+                "installed": "bool",
+                "version": "string | null",
+                "latest_version": "string | null",
+                "source": "string | null"
+            },
+            "actions": [
+                { "target": "<name>", "verbs": ["add"],    "description": "Install a package" },
+                { "target": "<name>", "verbs": ["remove"], "description": "Uninstall a package" },
+                { "target": "<name>", "verbs": ["reset"],  "description": "Repair (reinstall) a package" },
+                { "target": "<name>", "verbs": ["set"],    "description": "Set version", "args": { "version": { "type": "string", "description": "version string or 'latest'" } } }
+            ]
+        }),
+
+        ObserveDomain::Log => json!({
+            "domain": "log",
+            "observations": {
+                "entries": {
+                    "type": "array",
+                    "item": {
+                        "timestamp": "string",
+                        "level": "string",
+                        "source": "string",
+                        "message": "string"
+                    }
+                },
+                "total_matched": "integer",
+                "truncated": "bool | null"
+            },
+            "actions": []
+        }),
+
+        ObserveDomain::Share => json!({
+            "domain": "share",
+            "observations": {},
+            "actions": [
+                { "target": "<path>",      "verbs": ["add", "remove"], "description": "Map or disconnect a network share" },
+                { "target": "credentials", "verbs": ["reset"],         "description": "Refresh share credentials" }
+            ]
+        }),
+
+        ObserveDomain::Identity => json!({
+            "domain": "identity",
+            "observations": {},
+            "actions": [
+                { "target": "credentials", "verbs": ["clear", "reset"], "description": "Clear cached credentials" },
+                { "target": "account",     "verbs": ["restart"],        "description": "Re-authenticate account" }
+            ]
+        }),
+
+        ObserveDomain::Security => json!({
+            "domain": "security",
+            "observations": {},
+            "actions": [
+                { "target": "<rule>", "verbs": ["add", "remove"], "description": "Allow or remove a firewall rule" }
+            ]
+        }),
+
+        _ => json!({
+            "domain": domain.as_str(),
+            "observations": {},
+            "actions": []
+        }),
+    }
+}
+
+/// All domains that have specs.
+pub const SPEC_DOMAINS: &[ObserveDomain] = &[
+    ObserveDomain::Network,
+    ObserveDomain::Service,
+    ObserveDomain::Disk,
+    ObserveDomain::Printer,
+    ObserveDomain::Package,
+    ObserveDomain::Log,
+    ObserveDomain::Share,
+    ObserveDomain::Identity,
+    ObserveDomain::Security,
+];

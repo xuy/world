@@ -1,0 +1,23 @@
+{
+  "domain": "pip",
+  "observations": {
+    "packages": {
+      "type": "array",
+      "item": {
+        "name": "string",
+        "version": "string",
+        "latest_version": "string | null",
+        "outdated": "bool"
+      }
+    },
+    "python_version": "string",
+    "pip_version": "string",
+    "virtualenv": "string | null"
+  },
+  "actions": [
+    { "target": "<name>", "verbs": ["add"],    "description": "Install a pip package" },
+    { "target": "<name>", "verbs": ["remove"], "description": "Uninstall a pip package" },
+    { "target": "<name>", "verbs": ["set"],    "description": "Pin to a version", "args": { "version": { "type": "string" } } },
+    { "target": "all",    "verbs": ["set"],    "description": "Upgrade all outdated packages", "args": { "version": { "type": "string", "enum": ["latest"] } } }
+  ]
+}

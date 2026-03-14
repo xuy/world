@@ -1,0 +1,27 @@
+[package]
+name = "world"
+version = "0.1.0"
+edition = "2021"
+description = "Observe · Act · Verify — POMDP interface for agents"
+
+[workspace]
+
+[[bin]]
+name = "world"
+path = "src/main.rs"
+
+[dependencies]
+atty = "0.2"
+clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+colored = "3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+async-trait = "0.1"
+tokio = { version = "1", features = ["process", "time", "rt", "rt-multi-thread", "macros", "io-util"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }

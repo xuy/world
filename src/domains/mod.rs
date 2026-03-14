@@ -1,0 +1,141 @@
+pub mod disk;
+pub mod log;
+pub mod network;
+pub mod package;
+pub mod printer;
+pub mod service;
+
+use anyhow::Result;
+use serde_json::Value;
+
+use crate::adapters::Platform;
+use crate::contracts::observe::ObserveDomain;
+use crate::contracts::act::ActDomain;
+use crate::contracts::verify::VerifyCheck;
+use crate::contracts::UnifiedResult;
+
+/// Dispatch an observe call to the correct domain + platform adapter.
+pub async fn dispatch_observe(
+    platform: Platform,
+    domain: ObserveDomain,
+    target: Option<&str>,
+    scope: Option<&[String]>,
+    since: Option<&str>,
+    limit: Option<u32>,
+) -> Result<UnifiedResult> {
+    match domain {
+        ObserveDomain::Network => network::observe(platform, target, scope).await,
+        ObserveDomain::Service => service::observe(platform, target, scope).await,
+        ObserveDomain::Disk => disk::observe(platform, target, scope).await,
+        ObserveDomain::Printer => printer::observe(platform, target, scope).await,
+        ObserveDomain::Package => package::observe(platform, target, scope).await,
+        ObserveDomain::Log => log::observe(platform, target, scope, since, limit).await,
+        _ => Ok(UnifiedResult::unsupported(domain.as_str())),
+    }
+}
+
+/// Dispatch an act call.
+pub async fn dispatch_act(
+    platform: Platform,
+    domain: ActDomain,
+    action: &str,
+    target: Option<&str>,
+    params: Option<&Value>,
+    dry_run: bool,
+) -> Result<UnifiedResult> {
+    match domain {
+        ActDomain::Network => network::act(platform, action, target, params, dry_run).await,
+        ActDomain::Service => service::act(platform, action, target, params, dry_run).await,
+        ActDomain::Disk => disk::act(platform, action, target, params, dry_run).await,
+        ActDomain::Printer => printer::act(platform, action, target, params, dry_run).await,
+        ActDomain::Package => package::act(platform, action, target, params, dry_run).await,
+        _ => Ok(UnifiedResult::unsupported(&format!("act.{}", domain_str(domain)))),
+    }
+}
+
+/// Dispatch a verify call.
+pub async fn dispatch_verify(
+    platform: Platform,
+    check: VerifyCheck,
+    target: Option<&str>,
+    params: Option<&Value>,
+    timeout_sec: u32,
+) -> Result<UnifiedResult> {
+    match check {
+        VerifyCheck::HostReachable => network::verify_host_reachable(platform, target, timeout_sec).await,
+        VerifyCheck::DnsResolves => network::verify_dns_resolves(platform, target, timeout_sec).await,
+        VerifyCheck::InternetReachable => network::verify_internet_reachable(platform, timeout_sec).await,
+        VerifyCheck::PortOpen => network::verify_port_open(platform, target, params, timeout_sec).await,
+        VerifyCheck::ServiceHealthy => service::verify_healthy(platform, target, timeout_sec).await,
+        VerifyCheck::PrinterPrints => printer::verify_prints(platform, target, timeout_sec).await,
+        VerifyCheck::DiskWritable => disk::verify_writable(platform, target, timeout_sec).await,
+        VerifyCheck::PackageInstalled => package::verify_installed(platform, target, timeout_sec).await,
+        _ => Ok(UnifiedResult::unsupported(check.as_str())),
+    }
+}
+
+/// Progressive disclosure: return capability metadata for a domain.
+pub fn domain_capabilities(domain: ObserveDomain) -> UnifiedResult {
+    let (scopes, remediations, verifications, privilege_notes) = match domain {
+        ObserveDomain::Network => (
+            vec!["interfaces", "routes", "dns", "gateway", "proxy", "internet_status"],
+            vec!["flush_dns", "renew_dhcp", "toggle_adapter", "reconnect_wifi", "reset_proxy"],
+            vec!["host_reachable", "dns_resolves", "internet_reachable", "port_open"],
+            vec!["toggle_adapter may require administrator privileges"],
+        ),
+        ObserveDomain::Service => (
+            vec!["status", "startup_mode", "recent_errors", "dependencies"],
+            vec!["start_service", "stop_service", "restart_service"],
+            vec!["service_healthy"],
+            vec!["Service management may require administrator privileges"],
+        ),
+        ObserveDomain::Disk => (
+            vec!["space", "mounts", "temp_usage", "large_paths"],
+            vec!["clear_temp_files", "remove_large_known_caches"],
+            vec!["disk_writable"],
+            vec![],
+        ),
+        ObserveDomain::Printer => (
+            vec!["status", "queue", "driver", "port", "recent_errors"],
+            vec!["clear_queue", "restart_spooler", "set_default_printer"],
+            vec!["printer_prints", "host_reachable"],
+            vec!["reinstall_printer_driver may require administrator privileges"],
+        ),
+        ObserveDomain::Package => (
+            vec!["installed", "version", "recent_updates"],
+            vec!["repair_package", "install_package", "update_package"],
+            vec!["package_installed"],
+            vec![],
+        ),
+        ObserveDomain::Log => (
+            vec!["recent_errors", "recent_warnings", "matching", "timeline"],
+            vec![],
+            vec![],
+            vec![],
+        ),
+        _ => (vec![], vec![], vec![], vec![]),
+    };
+
+    UnifiedResult::ok(
+        format!("{} observation available.", domain.as_str()),
+        serde_json::json!({
+            "allowed_scopes": scopes,
+            "related_remediations": remediations,
+            "related_verifications": verifications,
+            "privilege_notes": privilege_notes,
+        }),
+    )
+}
+
+fn domain_str(d: ActDomain) -> &'static str {
+    match d {
+        ActDomain::Network => "network",
+        ActDomain::Service => "service",
+        ActDomain::Printer => "printer",
+        ActDomain::Disk => "disk",
+        ActDomain::Package => "package",
+        ActDomain::Share => "share",
+        ActDomain::Identity => "identity",
+        ActDomain::Security => "security",
+    }
+}
