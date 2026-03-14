@@ -98,6 +98,24 @@ pub enum Command {
         domain: Option<String>,
     },
 
+    /// Await a condition — block until a verify check passes
+    ///
+    /// Uses OS-native event mechanisms where available (kqueue for
+    /// process exit on macOS), falls back to polling with exponential
+    /// backoff. Always has a timeout.
+    Await {
+        /// Domain (process, container, network, ...)
+        domain: String,
+        /// Condition to wait for (stopped, running, healthy, ...)
+        condition: String,
+        /// Target for the check (PID, hostname, container ID, ...)
+        #[arg(long)]
+        target: Option<String>,
+        /// Maximum seconds to wait (default: 60)
+        #[arg(long, default_value = "60")]
+        timeout: u32,
+    },
+
     /// Sample an observation over time — repeated observe + reduce
     ///
     /// Takes N snapshots at a fixed interval, then reduces numeric fields
@@ -220,6 +238,15 @@ pub async fn run(cli: Cli) -> ExitCode {
                 &registry, &telemetry, mode, &domain, &target, &verb, &args, dry_run, yes,
             )
             .await
+        }
+
+        Command::Await {
+            domain,
+            condition,
+            target,
+            timeout,
+        } => {
+            run_await(mode, platform, &domain, &condition, target, timeout).await
         }
 
         Command::Sample {
@@ -400,6 +427,73 @@ async fn run_act(
         }
         Err(e) => {
             let r = UnifiedResult::err("execution_error", e.to_string());
+            format_result(mode, &r);
+            ExitCode::from(1)
+        }
+    }
+}
+
+// ─── Await ──────────────────────────────────────────────────────────────────
+
+async fn run_await(
+    mode: OutputMode,
+    platform: Platform,
+    domain: &str,
+    condition: &str,
+    target: Option<String>,
+    timeout_sec: u32,
+) -> ExitCode {
+    use crate::awaiting;
+
+    let check = match awaiting::resolve_condition(domain, condition) {
+        Some(c) => c,
+        None => {
+            let conditions = awaiting::conditions_for(domain);
+            let msg = if conditions.is_empty() {
+                format!("Unknown domain '{domain}' or no conditions available.")
+            } else {
+                format!(
+                    "Unknown condition '{condition}' for domain '{domain}'.\nAvailable: {}",
+                    conditions.join(", ")
+                )
+            };
+            let r = UnifiedResult::err("invalid_condition", msg);
+            format_result(mode, &r);
+            return ExitCode::from(1);
+        }
+    };
+
+    let opts = awaiting::AwaitOpts {
+        timeout_sec,
+        ..Default::default()
+    };
+
+    match awaiting::await_condition(
+        platform,
+        check,
+        target.as_deref(),
+        None,
+        opts,
+    )
+    .await
+    {
+        Ok(r) => {
+            let passed = r
+                .details
+                .as_ref()
+                .and_then(|d| d.get("passed"))
+                .and_then(|p| p.as_bool())
+                .unwrap_or(false);
+
+            format_result(mode, &r);
+            if passed {
+                ExitCode::from(0)
+            } else {
+                ExitCode::from(1) // timeout or condition not met
+            }
+        }
+        Err(e) => {
+            let r = UnifiedResult::err("await_error", e.to_string());
             format_result(mode, &r);
             ExitCode::from(1)
         }

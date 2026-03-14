@@ -11,6 +11,7 @@
 //! The `DomainPlugin` trait is the unified interface that all plugins implement.
 
 pub mod adapters;
+pub mod awaiting;
 pub mod cli;
 pub mod contracts;
 pub mod dispatch;
