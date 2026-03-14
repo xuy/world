@@ -38,9 +38,6 @@ pub struct ObserveArgs {
     /// Specific target (e.g. service name, printer name, host).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub target: Option<String>,
-    /// Narrow the observation to specific scopes within the domain.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub scope: Option<Vec<String>>,
     /// Time filter for log-like observations (e.g. "1h", "30m").
     #[serde(skip_serializing_if = "Option::is_none")]
     pub since: Option<String>,

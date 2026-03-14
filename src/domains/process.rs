@@ -7,11 +7,10 @@ use crate::contracts::UnifiedResult;
 pub async fn observe(
     platform: Platform,
     target: Option<&str>,
-    scope: Option<&[String]>,
     limit: Option<u32>,
 ) -> Result<UnifiedResult> {
     match platform {
-        Platform::MacOS => crate::adapters::macos::process::observe(target, scope, limit).await,
+        Platform::MacOS => crate::adapters::macos::process::observe(target, limit).await,
         _ => Ok(UnifiedResult::unsupported("process observation")),
     }
 }

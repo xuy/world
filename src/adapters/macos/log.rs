@@ -6,14 +6,9 @@ use crate::schemas::{LogEntries, LogEntry};
 
 pub async fn observe(
     target: Option<&str>,
-    scope: Option<&[String]>,
     since: Option<&str>,
     limit: Option<u32>,
 ) -> Result<UnifiedResult> {
-    let scopes: Vec<&str> = scope
-        .map(|s| s.iter().map(|x| x.as_str()).collect())
-        .unwrap_or_else(|| vec!["recent_errors"]);
-
     let since_str = since.unwrap_or("1h");
     let max_entries = limit.unwrap_or(50);
 
@@ -25,27 +20,20 @@ pub async fn observe(
         since_str.to_string(),
     ];
 
-    // Build predicate based on scope
-    let predicate = if scopes.contains(&"recent_errors") {
-        if let Some(subsystem) = target {
-            format!("(subsystem == \"{subsystem}\") AND (messageType == error)")
-        } else {
-            "messageType == error".to_string()
-        }
-    } else if scopes.contains(&"recent_warnings") {
-        if let Some(subsystem) = target {
-            format!("(subsystem == \"{subsystem}\") AND (messageType >= default)")
-        } else {
-            "messageType >= default".to_string()
-        }
-    } else if scopes.contains(&"matching") {
-        if let Some(pattern) = target {
+    // Build predicate based on target
+    // If target is "recent_errors", "recent_warnings", or "matching", use it as the predicate selector.
+    // Otherwise treat target as a subsystem filter. Default to "recent_errors" if no target.
+    let predicate = match target {
+        Some("recent_errors") | None => "messageType == error".to_string(),
+        Some("recent_warnings") => "messageType >= default".to_string(),
+        Some("matching") => "messageType == error".to_string(),
+        Some(t) if t.starts_with("matching:") => {
+            let pattern = &t["matching:".len()..];
             format!("eventMessage CONTAINS \"{pattern}\"")
-        } else {
-            "messageType == error".to_string()
         }
-    } else {
-        "messageType == error".to_string()
+        Some(subsystem) => {
+            format!("(subsystem == \"{subsystem}\") AND (messageType == error)")
+        }
     };
 
     args.push("--predicate".to_string());

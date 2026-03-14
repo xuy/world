@@ -52,7 +52,6 @@ pub trait DomainPlugin: Send + Sync {
     async fn observe(
         &self,
         target: Option<&str>,
-        scope: Option<&[String]>,
         since: Option<&str>,
         limit: Option<u32>,
     ) -> Result<UnifiedResult>;
@@ -173,7 +172,6 @@ impl DomainPlugin for NativePlugin {
     async fn observe(
         &self,
         target: Option<&str>,
-        scope: Option<&[String]>,
         since: Option<&str>,
         limit: Option<u32>,
     ) -> Result<UnifiedResult> {
@@ -181,7 +179,6 @@ impl DomainPlugin for NativePlugin {
             self.platform,
             self.observe_domain,
             target,
-            scope,
             since,
             limit,
         )

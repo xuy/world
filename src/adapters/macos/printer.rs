@@ -7,7 +7,6 @@ use crate::schemas::{PrinterState, PrinterStatus};
 
 pub async fn observe(
     target: Option<&str>,
-    _scope: Option<&[String]>,
 ) -> Result<UnifiedResult> {
     // List printers
     let printers_result = exec("lpstat", &["-p", "-d"], ExecOpts::default()).await?;

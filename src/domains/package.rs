@@ -7,10 +7,9 @@ use crate::contracts::UnifiedResult;
 pub async fn observe(
     platform: Platform,
     target: Option<&str>,
-    scope: Option<&[String]>,
 ) -> Result<UnifiedResult> {
     match platform {
-        Platform::MacOS => crate::adapters::macos::package::observe(target, scope).await,
+        Platform::MacOS => crate::adapters::macos::package::observe(target).await,
         _ => Ok(UnifiedResult::unsupported("package observation")),
     }
 }

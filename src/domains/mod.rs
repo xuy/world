@@ -21,19 +21,18 @@ pub async fn dispatch_observe(
     platform: Platform,
     domain: ObserveDomain,
     target: Option<&str>,
-    scope: Option<&[String]>,
     since: Option<&str>,
     limit: Option<u32>,
 ) -> Result<UnifiedResult> {
     match domain {
-        ObserveDomain::Network => network::observe(platform, target, scope).await,
-        ObserveDomain::Service => service::observe(platform, target, scope).await,
-        ObserveDomain::Disk => disk::observe(platform, target, scope).await,
-        ObserveDomain::Printer => printer::observe(platform, target, scope).await,
-        ObserveDomain::Package => package::observe(platform, target, scope).await,
-        ObserveDomain::Log => log::observe(platform, target, scope, since, limit).await,
-        ObserveDomain::Process => process::observe(platform, target, scope, limit).await,
-        ObserveDomain::Container => container::observe(platform, target, scope, limit).await,
+        ObserveDomain::Network => network::observe(platform, target).await,
+        ObserveDomain::Service => service::observe(platform, target).await,
+        ObserveDomain::Disk => disk::observe(platform, target).await,
+        ObserveDomain::Printer => printer::observe(platform, target).await,
+        ObserveDomain::Package => package::observe(platform, target).await,
+        ObserveDomain::Log => log::observe(platform, target, since, limit).await,
+        ObserveDomain::Process => process::observe(platform, target, limit).await,
+        ObserveDomain::Container => container::observe(platform, target, limit).await,
         _ => Ok(UnifiedResult::unsupported(domain.as_str())),
     }
 }

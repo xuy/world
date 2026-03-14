@@ -26,7 +26,6 @@ async fn detect_runtime() -> Option<String> {
 
 pub async fn observe(
     target: Option<&str>,
-    scope: Option<&[String]>,
     limit: Option<u32>,
 ) -> Result<UnifiedResult> {
     let runtime = match detect_runtime().await {
@@ -39,13 +38,21 @@ pub async fn observe(
         }
     };
 
-    let scope_str = scope.and_then(|s| s.first()).map(|s| s.as_str());
-
-    match scope_str {
+    // Target is the unified navigation:
+    //   None              → list containers (default)
+    //   "images"          → list images
+    //   "volumes"         → list volumes
+    //   "my-nginx"        → specific container
+    //   "my-nginx/logs"   → logs for container
+    match target {
         Some("images") => observe_images(&runtime).await,
         Some("volumes") => observe_volumes(&runtime).await,
-        Some("container_logs") => observe_logs(&runtime, target, limit).await,
-        _ => observe_containers(&runtime, target).await,
+        Some(t) if t.ends_with("/logs") => {
+            let id = &t[..t.len() - 5];
+            observe_logs(&runtime, Some(id), limit).await
+        }
+        Some(t) => observe_containers(&runtime, Some(t)).await,
+        None => observe_containers(&runtime, None).await,
     }
 }
 

@@ -7,10 +7,9 @@ use crate::schemas::{ServiceState, ServiceStatus};
 
 pub async fn observe(
     target: Option<&str>,
-    scope: Option<&[String]>,
 ) -> Result<UnifiedResult> {
     if let Some(name) = target {
-        return observe_single(name, scope).await;
+        return observe_single(name).await;
     }
 
     // List all running services
@@ -27,7 +26,7 @@ pub async fn observe(
     ]))
 }
 
-async fn observe_single(name: &str, _scope: Option<&[String]>) -> Result<UnifiedResult> {
+async fn observe_single(name: &str) -> Result<UnifiedResult> {
     // Try launchctl list <name>
     let result = exec("launchctl", &["list", name], ExecOpts::default()).await?;
 

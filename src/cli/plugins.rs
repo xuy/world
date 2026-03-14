@@ -86,12 +86,10 @@ impl Plugin {
     async fn call_observe(
         &self,
         target: Option<&str>,
-        scope: Option<&[String]>,
     ) -> Result<UnifiedResult> {
         let request = serde_json::json!({
             "command": "observe",
             "target": target,
-            "scope": scope,
         });
         self.call_handler(&request).await
     }
@@ -206,11 +204,10 @@ impl DomainPlugin for Plugin {
     async fn observe(
         &self,
         target: Option<&str>,
-        scope: Option<&[String]>,
         _since: Option<&str>,
         _limit: Option<u32>,
     ) -> Result<UnifiedResult> {
-        self.call_observe(target, scope).await
+        self.call_observe(target).await
     }
 
     async fn act(

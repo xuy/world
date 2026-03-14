@@ -41,16 +41,13 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// Observe structured system state (O) — pure state, no verbs
+    /// Observe state: world observe DOMAIN [TARGET]
     Observe {
-        /// Domain (network, service, disk, printer, package, log, ... or any plugin)
+        /// Domain (process, network, container, service, disk, ...)
         domain: String,
-        /// Specific target within the domain
-        #[arg(long)]
+        /// What to observe — the domain interprets this
+        /// (e.g. top_cpu, 1234, interfaces, images, my-nginx/logs)
         target: Option<String>,
-        /// Comma-separated scopes (e.g. interfaces,dns)
-        #[arg(long, value_delimiter = ',')]
-        scope: Option<Vec<String>>,
         /// Time filter (e.g. 1h, 30m) — for log domain
         #[arg(long)]
         since: Option<String>,
@@ -103,13 +100,13 @@ pub enum Command {
     /// Uses OS-native event mechanisms where available (kqueue for
     /// process exit on macOS), falls back to polling with exponential
     /// backoff. Always has a timeout.
+    /// Await a condition: world await DOMAIN CONDITION [TARGET]
     Await {
         /// Domain (process, container, network, ...)
         domain: String,
         /// Condition to wait for (stopped, running, healthy, ...)
         condition: String,
         /// Target for the check (PID, hostname, container ID, ...)
-        #[arg(long)]
         target: Option<String>,
         /// Maximum seconds to wait (default: 60)
         #[arg(long, default_value = "60")]
@@ -121,21 +118,18 @@ pub enum Command {
     /// Takes N snapshots at a fixed interval, then reduces numeric fields
     /// into statistics (mean, min, max, delta, rate). Domain-agnostic —
     /// works with any observable domain.
+    /// Sample over time: world sample DOMAIN [TARGET]
     Sample {
         /// Domain to observe
         domain: String,
+        /// What to observe (same as observe target)
+        target: Option<String>,
         /// Number of samples to take
         #[arg(long, default_value = "5")]
         count: u32,
         /// Interval between samples (e.g. 2s, 500ms, 1m)
         #[arg(long, default_value = "2s")]
         interval: String,
-        /// Specific target within the domain
-        #[arg(long)]
-        target: Option<String>,
-        /// Comma-separated scopes
-        #[arg(long, value_delimiter = ',')]
-        scope: Option<Vec<String>>,
         /// Maximum number of results per sample
         #[arg(long)]
         limit: Option<u32>,
@@ -219,11 +213,10 @@ pub async fn run(cli: Cli) -> ExitCode {
         Command::Observe {
             domain,
             target,
-            scope,
             since,
             limit,
         } => {
-            run_observe(&registry, &telemetry, mode, &domain, target, scope, since, limit).await
+            run_observe(&registry, &telemetry, mode, &domain, target, since, limit).await
         }
 
         Command::Act {
@@ -251,13 +244,12 @@ pub async fn run(cli: Cli) -> ExitCode {
 
         Command::Sample {
             domain,
+            target,
             count,
             interval,
-            target,
-            scope,
             limit,
         } => {
-            run_sample(&registry, mode, &domain, count, &interval, target, scope, limit).await
+            run_sample(&registry, mode, &domain, count, &interval, target, limit).await
         }
 
         Command::Spec { domain, core } => {
@@ -290,7 +282,6 @@ async fn run_observe(
     mode: OutputMode,
     domain_str: &str,
     target: Option<String>,
-    scope: Option<Vec<String>>,
     since: Option<String>,
     limit: Option<u32>,
 ) -> ExitCode {
@@ -308,7 +299,6 @@ async fn run_observe(
     let result = plugin
         .observe(
             target.as_deref(),
-            scope.as_deref(),
             since.as_deref(),
             limit,
         )
@@ -509,7 +499,6 @@ async fn run_sample(
     count: u32,
     interval: &str,
     target: Option<String>,
-    scope: Option<Vec<String>>,
     limit: Option<u32>,
 ) -> ExitCode {
     use crate::sampling;
@@ -548,7 +537,7 @@ async fn run_sample(
         }
 
         let result = plugin
-            .observe(target.as_deref(), scope.as_deref(), None, limit)
+            .observe(target.as_deref(), None, limit)
             .await;
 
         match result {

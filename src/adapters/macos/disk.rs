@@ -6,12 +6,16 @@ use crate::execution::{exec, ExecOpts};
 use crate::schemas::{DiskState, MountPoint};
 
 pub async fn observe(
-    _target: Option<&str>,
-    scope: Option<&[String]>,
+    target: Option<&str>,
 ) -> Result<UnifiedResult> {
-    let scopes: Vec<&str> = scope
-        .map(|s| s.iter().map(|x| x.as_str()).collect())
-        .unwrap_or_else(|| vec!["space", "mounts"]);
+    // Target selects what to show:
+    //   None          → mounts + space (default)
+    //   "temp_usage"  → temp dir sizes
+    //   "/path"       → specific mount point (future)
+    let scopes: Vec<&str> = match target {
+        Some("temp_usage") => vec!["temp_usage"],
+        _ => vec!["space", "mounts"],
+    };
 
     let mut state = DiskState {
         mounts: vec![],

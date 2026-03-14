@@ -15,16 +15,15 @@ The built-in domains cover system state on macOS — processes, networks, contai
 Read state. Returns structured, normalized data — the agent never parses raw command output.
 
 ```bash
-world observe process --scope top_cpu --limit 5
-world observe network --scope interfaces,internet_status
-world observe container --scope containers
+world observe process top_cpu --limit 5
+world observe network interfaces
+world observe container images
 ```
 
 Call with just a domain to discover what's available:
 
 ```bash
 world observe network
-# → allowed_scopes, related_actions, related_verifications
 ```
 
 ### act
@@ -43,9 +42,9 @@ world act container my-nginx enable
 Block until a condition becomes true. This is the link between act and observe — instead of polling in a retry loop, the agent declares what it's waiting for.
 
 ```bash
-world await process stopped --target 5678
-world await container healthy --target my-nginx
-world await network host_reachable --target google.com --timeout 30
+world await process stopped 5678
+world await container healthy my-nginx
+world await network host_reachable google.com --timeout 30
 ```
 
 Uses OS-native event mechanisms where available (kqueue `EVFILT_PROC` for process exit — microsecond notification). Falls back to polling with exponential backoff. Always has a timeout.
@@ -56,13 +55,13 @@ Uses OS-native event mechanisms where available (kqueue `EVFILT_PROC` for proces
 
 ```bash
 # What's using CPU?
-world observe process --scope top_cpu --limit 5
+world observe process top_cpu --limit 5
 
 # Kill the offender
 world act process 5678 kill
 
 # Confirm it's dead
-world await process stopped --target 5678
+world await process stopped 5678
 ```
 
 ### Observe over time
@@ -70,7 +69,7 @@ world await process stopped --target 5678
 A single observe is a snapshot. For ephemeral quantities like CPU%, one snapshot is nearly useless. `sample` takes repeated observations and reduces them:
 
 ```bash
-world sample process --scope top_cpu --limit 5 --count 5 --interval 2s
+world sample process top_cpu --limit 5 --count 5 --interval 2s
 ```
 
 Fields that vary become statistics (`cpu_percent: {mean: 42.3, delta: 2.1, rate_per_sec: 0.5}`). Constant fields stay as scalars (`pid: 415`).
@@ -78,9 +77,9 @@ Fields that vary become statistics (`cpu_percent: {mean: 42.3, delta: 2.1, rate_
 ### Containers
 
 ```bash
-world observe container --scope containers
+world observe container
 world act container my-nginx restart
-world await container healthy --target my-nginx
+world await container healthy my-nginx
 ```
 
 Auto-detects Docker or Podman. Degrades gracefully when neither is installed.
@@ -88,37 +87,37 @@ Auto-detects Docker or Podman. Degrades gracefully when neither is installed.
 ### Network
 
 ```bash
-world observe network --scope interfaces,internet_status
+world observe network interfaces
 world act network dns_cache reset
-world await network dns_resolves --target google.com
+world await network dns_resolves google.com
 ```
 
 ### What's listening?
 
 ```bash
-world observe process --scope listening_ports
+world observe process listening_ports
 ```
 
 ## Domains
 
-| Domain | Observe | Act |
+| Domain | Targets | Act |
 |--------|---------|-----|
-| **process** | processes, tree, top_cpu, top_memory, open_files, listening_ports | kill_graceful, kill_force, set_priority |
-| **network** | interfaces, routes, dns, gateway, proxy, internet_status | flush_dns, renew_dhcp, toggle_adapter, forget_wifi |
-| **container** | containers, images, volumes, container_logs | start, stop, restart, remove, pull, prune |
-| **service** | status, startup_mode, recent_errors, dependencies | start, stop, restart, set_startup_mode |
-| **disk** | space, mounts, temp_usage, large_paths | clear_temp, remove_caches |
-| **package** | installed, version, recent_updates | install, uninstall, repair, update |
-| **printer** | status, queue, driver, port | clear_queue, restart_spooler, set_default |
-| **log** | recent_errors, warnings, matching, timeline | *(read-only)* |
+| **process** | *(default: top by CPU)*, top_cpu, top_memory, processes, listening_ports, `<pid>`, `<name>`, `<pid>/tree`, `<pid>/open_files` | kill_graceful, kill_force, set_priority |
+| **network** | *(default: all)*, interfaces, dns, gateway, internet_status | flush_dns, renew_dhcp, toggle_adapter, forget_wifi |
+| **container** | *(default: containers)*, images, volumes, `<name>`, `<name>/logs` | start, stop, restart, remove, pull, prune |
+| **service** | *(default: list)*, `<name>` | start, stop, restart, set_startup_mode |
+| **disk** | *(default: mounts + space)*, temp_usage | clear_temp, remove_caches |
+| **package** | *(default: list)*, `<name>` | install, uninstall, repair, update |
+| **printer** | *(default: list)*, `<name>` | clear_queue, restart_spooler, set_default |
+| **log** | *(default: recent errors)*, recent_warnings, `<subsystem>` | *(read-only)* |
 
 ## CLI
 
 ```
-world observe DOMAIN [--target T] [--scope S1,S2] [--since 1h] [--limit N]
+world observe DOMAIN [TARGET] [--limit N] [--since T]
 world act     DOMAIN TARGET VERB [KEY=VALUE ...] [--dry-run] [--yes]
-world await   DOMAIN CONDITION [--target T] [--timeout N]
-world sample  DOMAIN [--scope S] [--count N] [--interval 2s] [--limit N]
+world await   DOMAIN CONDITION [TARGET] [--timeout N]
+world sample  DOMAIN [TARGET] [--count N] [--interval T] [--limit N]
 world spec    [DOMAIN]
 ```
 

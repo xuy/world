@@ -9,21 +9,36 @@ use crate::schemas::{ProcessInfo, ProcessState, ProcessStatus};
 
 pub async fn observe(
     target: Option<&str>,
-    scope: Option<&[String]>,
     limit: Option<u32>,
 ) -> Result<UnifiedResult> {
-    let scope_str = scope.and_then(|s| s.first()).map(|s| s.as_str());
-
-    match scope_str {
-        Some("processes") => observe_processes(target, limit).await,
+    // Target is the unified navigation:
+    //   None             → top 20 by CPU (default)
+    //   "top_cpu"        → top by CPU
+    //   "top_memory"     → top by memory
+    //   "processes"      → full process list
+    //   "listening_ports" → listening ports
+    //   "1234"           → specific PID
+    //   "postgres"       → name filter
+    //   "1234/tree"      → tree rooted at PID
+    //   "1234/open_files" → open files for PID
+    match target {
         Some("top_cpu") => observe_top(limit, "pcpu").await,
         Some("top_memory") => observe_top(limit, "rss").await,
-        Some("tree") => observe_tree(target).await,
-        Some("open_files") => observe_open_files(target).await,
+        Some("processes") => observe_processes(None, limit).await,
         Some("listening_ports") => observe_listening_ports().await,
-        // Default: if target given, filter to it; otherwise show top by CPU
-        None if target.is_some() => observe_processes(target, limit).await,
-        _ => observe_top(limit.or(Some(20)), "pcpu").await,
+        Some(t) if t.contains('/') => {
+            let (id, sub) = t.split_once('/').unwrap();
+            match sub {
+                "tree" => observe_tree(Some(id)).await,
+                "open_files" => observe_open_files(Some(id)).await,
+                _ => Ok(UnifiedResult::err(
+                    "unknown_target",
+                    format!("Unknown sub-target '{sub}'. Available: tree, open_files"),
+                )),
+            }
+        }
+        Some(t) => observe_processes(Some(t), limit).await,
+        None => observe_top(limit.or(Some(20)), "pcpu").await,
     }
 }
 

@@ -28,7 +28,7 @@ impl Tool for ObserveTool {
     }
 
     fn description(&self) -> &str {
-        "Read-only observation of live state. Specify a domain and optionally a target and scope. If called with just a domain and no scope, returns capability metadata showing available scopes, actions, and verification checks."
+        "Read-only observation of live state. Specify a domain and optionally a target. If called with just a domain and no target, returns capability metadata showing available scopes, actions, and verification checks."
     }
 
     fn input_schema(&self) -> Value {
@@ -43,11 +43,6 @@ impl Tool for ObserveTool {
                 "target": {
                     "type": "string",
                     "description": "Specific target within the domain (e.g. service name, printer name, hostname)."
-                },
-                "scope": {
-                    "type": "array",
-                    "items": { "type": "string" },
-                    "description": "Narrow observation to specific aspects (e.g. [\"interfaces\", \"dns\"] for network)."
                 },
                 "since": {
                     "type": "string",
@@ -70,8 +65,8 @@ impl Tool for ObserveTool {
         let args: ObserveArgs = serde_json::from_value(input.clone())?;
         let start = Instant::now();
 
-        // Progressive disclosure: if no scope specified, return capabilities
-        if args.scope.is_none() && args.target.is_none() {
+        // Progressive disclosure: if no target specified, return capabilities
+        if args.target.is_none() {
             let caps = domains::domain_capabilities(args.domain);
             let data = serde_json::to_value(&caps)?;
             return Ok(ToolResult::read_only(caps.output, data));
@@ -81,7 +76,6 @@ impl Tool for ObserveTool {
             self.platform,
             args.domain,
             args.target.as_deref(),
-            args.scope.as_deref(),
             args.since.as_deref(),
             args.limit,
         )

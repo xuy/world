@@ -6,12 +6,13 @@ use crate::execution::{exec, exec_shell, ExecOpts};
 use crate::schemas::{InterfaceType, NetworkInterface, NetworkState};
 
 pub async fn observe(
-    _target: Option<&str>,
-    scope: Option<&[String]>,
+    target: Option<&str>,
 ) -> Result<UnifiedResult> {
-    let scopes: Vec<&str> = scope
-        .map(|s| s.iter().map(|x| x.as_str()).collect())
-        .unwrap_or_else(|| vec!["interfaces", "dns", "gateway", "internet_status"]);
+    // Target selects what to include. None = everything.
+    let scopes: Vec<&str> = match target {
+        Some(t) => t.split(',').collect(),
+        None => vec!["interfaces", "dns", "gateway", "internet_status"],
+    };
 
     let mut state = NetworkState {
         interfaces: vec![],

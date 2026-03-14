@@ -196,12 +196,12 @@ fn test_tool_definitions_serialize_to_anthropic_format() {
 // ── Phase 4: observe → act → verify flow ──────────────────────
 
 #[tokio::test]
-async fn test_observe_network_with_scope() {
+async fn test_observe_network_with_target() {
     let tools = tools();
     let observe = find_tool(&tools, "observe");
 
-    // Calling observe with a specific scope should return real data (not capabilities)
-    let input = json!({"domain": "network", "scope": ["interfaces", "internet_status"]});
+    // Calling observe with a target should return real data (not capabilities)
+    let input = json!({"domain": "network", "target": "interfaces"});
     let result = observe.execute(&input).await.unwrap();
 
     // Should have output text and structured data
@@ -255,8 +255,8 @@ async fn test_telemetry_records_tool_calls() {
     let (tools, telemetry) = tools_with_telemetry();
     let observe = find_tool(&tools, "observe");
 
-    // Call observe with scope to generate a real call (not progressive disclosure)
-    let input = json!({"domain": "network", "scope": ["interfaces"]});
+    // Call observe with target to generate a real call (not progressive disclosure)
+    let input = json!({"domain": "network", "target": "interfaces"});
     let _ = observe.execute(&input).await.unwrap();
 
     let events = telemetry.events();

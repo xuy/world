@@ -7,7 +7,6 @@ use crate::schemas::PackageState;
 
 pub async fn observe(
     target: Option<&str>,
-    _scope: Option<&[String]>,
 ) -> Result<UnifiedResult> {
     // Check if Homebrew is available
     let brew_check = exec("which", &["brew"], ExecOpts::default()).await;
