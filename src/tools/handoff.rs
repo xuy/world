@@ -24,7 +24,7 @@ impl Tool for HandoffTool {
     }
 
     fn description(&self) -> &str {
-        "Structured escalation when the agent cannot complete resolution. Creates a handoff summary with evidence, severity, and recommended human owner. Use when blocked by privilege, policy, physical access, or when remediation attempts have been exhausted."
+        "Structured escalation when the agent cannot complete a task. Creates a handoff summary with evidence, severity, and recommended human owner. Use when blocked by privilege, policy, physical access, or when action attempts have been exhausted."
     }
 
     fn input_schema(&self) -> Value {

@@ -29,7 +29,7 @@ impl Tool for ActTool {
     }
 
     fn description(&self) -> &str {
-        "Perform a constrained state-changing operation. Specify a domain, action, and optionally a target. Only whitelisted actions are allowed. After remediation, always verify the intended outcome using the verify tool."
+        "Perform a constrained state-changing operation. Specify a domain, action, and optionally a target. Only whitelisted actions are allowed. After acting, use verify or await to confirm the intended outcome."
     }
 
     fn input_schema(&self) -> Value {

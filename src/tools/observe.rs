@@ -28,7 +28,7 @@ impl Tool for ObserveTool {
     }
 
     fn description(&self) -> &str {
-        "Read-only observation of live system state. Specify a domain (network, service, disk, printer, package, log) and optionally a target and scope. If called with just a domain and no scope, returns capability metadata showing available scopes, related remediations, and verification checks."
+        "Read-only observation of live state. Specify a domain and optionally a target and scope. If called with just a domain and no scope, returns capability metadata showing available scopes, actions, and verification checks."
     }
 
     fn input_schema(&self) -> Value {

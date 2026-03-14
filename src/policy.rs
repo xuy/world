@@ -2,7 +2,7 @@
 
 use crate::contracts::{Risk, act::ActDomain};
 
-/// Classify the risk of a remediation action.
+/// Classify the risk of an action.
 pub fn classify_risk(domain: ActDomain, action: &str) -> Risk {
     match (domain, action) {
         // Low risk — read-only-like or trivially reversible
@@ -52,7 +52,7 @@ pub fn is_allowed(domain: ActDomain, action: &str) -> bool {
     crate::contracts::act::allowed_actions(domain).contains(&action)
 }
 
-/// Recommended verification checks after a remediation.
+/// Recommended verification checks after an action.
 pub fn recommended_verifications(action: &str) -> Vec<String> {
     crate::contracts::verify::recommended_verifications(action)
         .iter()

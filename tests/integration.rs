@@ -114,7 +114,7 @@ async fn test_observe_progressive_disclosure() {
     // Should contain capability metadata
     let data = &result.data;
     assert!(data["details"]["allowed_scopes"].is_array());
-    assert!(data["details"]["related_remediations"].is_array());
+    assert!(data["details"]["related_actions"].is_array());
     assert!(data["details"]["related_verifications"].is_array());
 }
 

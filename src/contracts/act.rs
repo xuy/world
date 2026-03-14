@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// Domains that support remediation.
+/// Domains that support actions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ActDomain {
@@ -31,7 +31,7 @@ pub struct ActArgs {
     pub dry_run: Option<bool>,
 }
 
-/// All whitelisted remediation actions, organized by domain.
+/// All whitelisted actions, organized by domain.
 pub fn allowed_actions(domain: ActDomain) -> &'static [&'static str] {
     match domain {
         ActDomain::Network => &[

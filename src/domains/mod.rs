@@ -87,7 +87,7 @@ pub async fn dispatch_verify(
 
 /// Progressive disclosure: return capability metadata for a domain.
 pub fn domain_capabilities(domain: ObserveDomain) -> UnifiedResult {
-    let (scopes, remediations, verifications, privilege_notes) = match domain {
+    let (scopes, actions, verifications, privilege_notes) = match domain {
         ObserveDomain::Network => (
             vec!["interfaces", "routes", "dns", "gateway", "proxy", "internet_status"],
             vec!["flush_dns", "renew_dhcp", "toggle_adapter", "reconnect_wifi", "reset_proxy"],
@@ -143,7 +143,7 @@ pub fn domain_capabilities(domain: ObserveDomain) -> UnifiedResult {
         format!("{} observation available.", domain.as_str()),
         serde_json::json!({
             "allowed_scopes": scopes,
-            "related_remediations": remediations,
+            "related_actions": actions,
             "related_verifications": verifications,
             "privilege_notes": privilege_notes,
         }),

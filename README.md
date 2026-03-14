@@ -2,7 +2,9 @@
 
 **Observe · Act · Await** — a POMDP interface for agents.
 
-`world` gives AI agents structured, safe access to operating system state and remediation actions. Instead of shelling out blind commands and parsing unpredictable output, agents interact through a typed interface with built-in safety rails, risk classification, and audit trails.
+`world` is the interface between agents and the things they act on. Agents observe state, take actions, and await conditions — through typed, safe, auditable operations instead of raw shell commands.
+
+The domains are pluggable. The built-in plugins cover system state (processes, networks, containers, disks), but `world` is not limited to operating systems — anything with observable state and a finite set of actions can be a domain plugin: a robot, a phone, a cloud API, a database.
 
 ```
 world observe network --scope interfaces,internet_status
@@ -12,16 +14,16 @@ world await network dns_resolves --target google.com
 
 ## Why
 
-Agents that manage systems today do it through raw shell commands. This is fragile, dangerous, and unobservable. `world` replaces that with a **finite set of typed operations** — observe state, take action, await the result — modeled as a [POMDP](https://en.wikipedia.org/wiki/Partially_observable_Markov_decision_process) so agents can reason about what they know and what they can do.
+Agents that interact with the world today do it through raw shell commands. This is fragile, dangerous, and unobservable. `world` replaces that with a **finite set of typed operations** — observe, act, await — modeled as a [POMDP](https://en.wikipedia.org/wiki/Partially_observable_Markov_decision_process) so agents can reason about what they know and what they can do.
 
-Every action is risk-classified. Every tool call is logged. Catastrophic commands are hard-blocked. High-risk operations require explicit consent. Agents can't `rm -rf /` — they can only invoke whitelisted verbs on known domains.
+Every action is risk-classified. Every tool call is logged. Dangerous operations are blocked or gated behind consent. Agents can only invoke declared verbs on known domains.
 
 ## The Primitives
 
 | Primitive | Purpose |
 |-----------|---------|
 | **observe** | Structured state observation — point-in-time snapshot |
-| **act** | Constrained remediation through whitelisted verbs |
+| **act** | State mutation through whitelisted verbs |
 | **sample** | Temporal observation — repeated observe + statistical reduction |
 | **await** | Block until a condition becomes true (kqueue/polling) |
 

@@ -59,7 +59,7 @@ pub struct VerifyArgs {
     pub timeout_sec: Option<u32>,
 }
 
-/// Recommended verification checks after a remediation action.
+/// Recommended verification checks after an action.
 pub fn recommended_verifications(action: &str) -> &'static [&'static str] {
     match action {
         "restart_service" | "start_service" => &["service_healthy"],
