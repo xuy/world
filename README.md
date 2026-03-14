@@ -1,16 +1,18 @@
 # world
 
-**A POMDP interface for agents.**
+`world` is a contrarian tool that gives AI agents a proper interface to interact with the world. The fundamental model is to treat the world as a partially observable environment — agents observe what they can, act on what they're allowed to, and maintain their own internal belief and world models from the observations.
 
-`world` defines four primitives for how agents interact with the world: **observe** state, **act** to change it, **sample** over time, and **await** conditions. That's it.
+## Key Concepts
 
-Domains are pluggable. The built-in plugins cover processes, networks, containers, disks, packages, and services on macOS — but `world` is not an OS tool. Anything with observable state and a finite set of actions can be a domain: a robot, a phone, a cloud API, a database.
+### Domain
 
-## The Four Primitives
+A domain is a slice of the world that can be observed and acted on. Each domain declares what state is observable, what actions are available, and what conditions can be awaited.
 
-### observe — read state
+The built-in domains cover system state on macOS — processes, networks, containers, services, disks, packages, printers, logs — but a domain can be anything: a robot arm, a phone, a cloud API, a database. If it has state and actions, it's a domain.
 
-A point-in-time snapshot of a domain. Returns structured, normalized data — the agent never parses raw command output.
+### observe
+
+Read state. Returns structured, normalized data — the agent never parses raw command output.
 
 ```bash
 world observe process --scope top_cpu --limit 5
@@ -18,15 +20,16 @@ world observe network --scope interfaces,internet_status
 world observe container --scope containers
 ```
 
-Call with just a domain to discover what's available (scopes, actions, conditions):
+Call with just a domain to discover what's available:
 
 ```bash
 world observe network
+# → allowed_scopes, related_actions, related_verifications
 ```
 
-### act — change state
+### act
 
-A finite verb on a known target. Only declared actions are accepted — there's no open-ended command execution in this interface.
+Change state. A finite verb on a known target.
 
 ```bash
 world act network dns_cache reset
@@ -35,42 +38,68 @@ world act process 5678 kill
 world act container my-nginx enable
 ```
 
-### sample — observe over time
+### await
 
-A single `observe` is a snapshot. For quantities like CPU and memory, a snapshot is almost useless — you can't tell if a value is spiking, trending, or stable.
+Block until a condition becomes true. This is the link between act and observe — instead of polling in a retry loop, the agent declares what it's waiting for.
 
-`sample` takes N observations at a fixed interval and reduces them into statistics: mean (integral), min/max (extremes), delta (differential), rate (derivative).
+```bash
+world await process stopped --target 5678
+world await container healthy --target my-nginx
+world await network host_reachable --target google.com --timeout 30
+```
+
+Uses OS-native event mechanisms where available (kqueue `EVFILT_PROC` for process exit — microsecond notification). Falls back to polling with exponential backoff. Always has a timeout.
+
+## Examples
+
+### Diagnose and fix
+
+```bash
+# What's using CPU?
+world observe process --scope top_cpu --limit 5
+
+# Kill the offender
+world act process 5678 kill
+
+# Confirm it's dead
+world await process stopped --target 5678
+```
+
+### Observe over time
+
+A single observe is a snapshot. For ephemeral quantities like CPU%, one snapshot is nearly useless. `sample` takes repeated observations and reduces them:
 
 ```bash
 world sample process --scope top_cpu --limit 5 --count 5 --interval 2s
 ```
 
-Fields that vary across samples become stats:
-```json
-"cpu_percent": {"mean": 42.3, "min": 38.1, "max": 47.2, "delta": 2.1, "rate_per_sec": 0.5}
-```
+Fields that vary become statistics (`cpu_percent: {mean: 42.3, delta: 2.1, rate_per_sec: 0.5}`). Constant fields stay as scalars (`pid: 415`).
 
-Fields that don't vary stay as scalars: `"pid": 415`, `"ppid": 1`. The reducer discovers this from the data — no domain-specific configuration needed.
-
-### await — block until a condition is true
-
-The missing link in the act→verify loop. Instead of polling in a retry loop, agents declare what they're waiting for:
+### Containers
 
 ```bash
-world act process 5678 kill
-world await process stopped --target 5678
-
+world observe container --scope containers
 world act container my-nginx restart
 world await container healthy --target my-nginx
-
-world await network host_reachable --target google.com --timeout 30
 ```
 
-Uses OS-native event mechanisms where available (kqueue `EVFILT_PROC` for process exit on macOS — microsecond notification). Falls back to polling with exponential backoff. Always has a timeout. Exit code 0 = condition met, 1 = timeout.
+Auto-detects Docker or Podman. Degrades gracefully when neither is installed.
+
+### Network
+
+```bash
+world observe network --scope interfaces,internet_status
+world act network dns_cache reset
+world await network dns_resolves --target google.com
+```
+
+### What's listening?
+
+```bash
+world observe process --scope listening_ports
+```
 
 ## Domains
-
-Each domain is a plugin that declares what can be observed, what actions are available, and what conditions can be awaited.
 
 | Domain | Observe | Act |
 |--------|---------|-----|
@@ -83,90 +112,7 @@ Each domain is a plugin that declares what can be observed, what actions are ava
 | **printer** | status, queue, driver, port | clear_queue, restart_spooler, set_default |
 | **log** | recent_errors, warnings, matching, timeline | *(read-only)* |
 
-These are the built-in macOS adapters. Writing a new domain plugin — for any platform or any system — means implementing observe/act for your domain and dropping it into the plugin directory.
-
-## How It Fits Together
-
-```bash
-# 1. What's going on?
-world observe process --scope top_cpu --limit 5
-
-# 2. Is it changing?
-world sample process --scope top_cpu --limit 5 --count 3 --interval 2s
-
-# 3. Do something about it
-world act process 5678 kill
-
-# 4. Wait for the result
-world await process stopped --target 5678
-```
-
-Observe gives you the state. Sample gives you the trend. Act changes the state. Await confirms the change. The agent decides what to do — `world` just provides the interface.
-
-## Structured Output
-
-Every primitive returns the same envelope:
-
-```json
-{
-  "output": "5 processes found.",
-  "details": { "processes": [...], "total_count": 994 },
-  "next_suggested_actions": ["observe(process, scope: [\"top_memory\"])"]
-}
-```
-
-`--json` for agents, `--pretty` for humans (default in TTY), `-q` for exit code only.
-
-## Plugin System
-
-Domains are plugins. Native Rust plugins for performance, external subprocess plugins (any language) for extensibility.
-
-```
-plugins/
-  pip/
-    spec.json        # POMDP spec: observations + actions
-    dispatch.json    # verb → handler mapping
-    handler.py       # subprocess handler (any language)
-```
-
-## Architecture
-
-```
-Agent / CLI
-    ↓
-┌─────────────────────────────┐
-│  Primitives                 │  ← observe, act, sample, await
-├─────────────────────────────┤
-│  Domain Dispatch            │  ← Route to correct domain + platform
-├─────────────────────────────┤
-│  Platform Adapters          │  ← macOS / Linux / Windows
-├─────────────────────────────┤
-│  Normalized Schemas         │  ← ProcessState, NetworkState, ...
-└─────────────────────────────┘
-```
-
-## Add-ons
-
-The core primitives are pure: observe reads, act writes, sample aggregates, await blocks. On top of this, `world` ships several add-ons that are useful but not fundamental:
-
-- **Policy** — risk classification (Low/Medium/High), allowlists, consent gates for high-risk actions
-- **Dry run** — `--dry-run` on any action to preview without executing
-- **Bash** — escape hatch for commands that don't fit a domain, with blocked-pattern detection (`rm -rf /`, `mkfs`, fork bombs)
-- **Handoff** — structured escalation when the agent is blocked (privilege, physical access, policy)
-- **Telemetry** — every primitive call is logged with duration, success, risk, and linking (which await followed which act)
-
-## Agent Integration
-
-Tools expose Anthropic-compatible JSON schemas for direct use with tool-use LLMs:
-
-```rust
-use world::create_tools;
-
-let tools = create_tools();
-// Each tool: name, description, input_schema, execute()
-```
-
-## CLI Reference
+## CLI
 
 ```
 world observe DOMAIN [--target T] [--scope S1,S2] [--since 1h] [--limit N]
@@ -175,6 +121,8 @@ world await   DOMAIN CONDITION [--target T] [--timeout N]
 world sample  DOMAIN [--scope S] [--count N] [--interval 2s] [--limit N]
 world spec    [DOMAIN]
 ```
+
+`--json` for agents. `--pretty` for humans (default in TTY). `-q` for exit code only.
 
 ## Building
 
