@@ -66,6 +66,26 @@ pub fn entries(domain: &str) -> &'static [Entry] {
             Entry { target: "<rule>", verb: "add",    handler: "allow_firewall_rule" },
             Entry { target: "<rule>", verb: "remove", handler: "remove_firewall_rule" },
         ],
+        "process" => &[
+            Entry { target: "<pid>",          verb: "kill",   handler: "kill_graceful" },
+            Entry { target: "<pid>",          verb: "remove", handler: "kill_force" },
+            Entry { target: "<pid>.priority", verb: "set",    handler: "set_priority" },
+        ],
+        "container" => &[
+            Entry { target: "<id>",    verb: "enable",  handler: "start_container" },
+            Entry { target: "<id>",    verb: "disable", handler: "stop_container" },
+            Entry { target: "<id>",    verb: "restart", handler: "restart_container" },
+            Entry { target: "<id>",    verb: "remove",  handler: "remove_container" },
+            Entry { target: "<image>", verb: "add",     handler: "pull_image" },
+            Entry { target: "images",  verb: "clear",   handler: "prune_images" },
+            Entry { target: "volumes", verb: "clear",   handler: "prune_volumes" },
+        ],
+        "certificate" => &[
+            Entry { target: "<name>", verb: "add",     handler: "install_cert" },
+            Entry { target: "<name>", verb: "remove",  handler: "remove_cert" },
+            Entry { target: "<name>", verb: "enable",  handler: "trust_cert" },
+            Entry { target: "<name>", verb: "disable", handler: "untrust_cert" },
+        ],
         _ => &[],
     }
 }

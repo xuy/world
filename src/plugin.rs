@@ -264,5 +264,23 @@ pub fn native_plugins(platform: Platform) -> Vec<Box<dyn DomainPlugin>> {
             Some(ActDomain::Security),
             platform,
         )),
+        Box::new(NativePlugin::new(
+            "process",
+            ObserveDomain::Process,
+            Some(ActDomain::Process),
+            platform,
+        )),
+        Box::new(NativePlugin::new(
+            "container",
+            ObserveDomain::Container,
+            Some(ActDomain::Container),
+            platform,
+        )),
+        Box::new(NativePlugin::new(
+            "certificate",
+            ObserveDomain::Certificate,
+            Some(ActDomain::Certificate),
+            platform,
+        )),
     ]
 }

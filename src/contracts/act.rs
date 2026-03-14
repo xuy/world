@@ -13,6 +13,9 @@ pub enum ActDomain {
     Share,
     Identity,
     Security,
+    Process,
+    Container,
+    Certificate,
 }
 
 /// Arguments for the `act` tool.
@@ -79,6 +82,26 @@ pub fn allowed_actions(domain: ActDomain) -> &'static [&'static str] {
         ActDomain::Security => &[
             "allow_firewall_rule",
             "remove_firewall_rule",
+        ],
+        ActDomain::Process => &[
+            "kill_graceful",
+            "kill_force",
+            "set_priority",
+        ],
+        ActDomain::Container => &[
+            "start_container",
+            "stop_container",
+            "restart_container",
+            "remove_container",
+            "pull_image",
+            "prune_images",
+            "prune_volumes",
+        ],
+        ActDomain::Certificate => &[
+            "install_cert",
+            "remove_cert",
+            "trust_cert",
+            "untrust_cert",
         ],
     }
 }

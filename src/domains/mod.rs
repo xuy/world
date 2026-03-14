@@ -1,8 +1,11 @@
+pub mod certificate;
+pub mod container;
 pub mod disk;
 pub mod log;
 pub mod network;
 pub mod package;
 pub mod printer;
+pub mod process;
 pub mod service;
 
 use anyhow::Result;
@@ -30,6 +33,9 @@ pub async fn dispatch_observe(
         ObserveDomain::Printer => printer::observe(platform, target, scope).await,
         ObserveDomain::Package => package::observe(platform, target, scope).await,
         ObserveDomain::Log => log::observe(platform, target, scope, since, limit).await,
+        ObserveDomain::Process => process::observe(platform, target, scope, limit).await,
+        ObserveDomain::Container => container::observe(platform, target, scope, limit).await,
+        ObserveDomain::Certificate => certificate::observe(platform, target, scope).await,
         _ => Ok(UnifiedResult::unsupported(domain.as_str())),
     }
 }
@@ -49,6 +55,9 @@ pub async fn dispatch_act(
         ActDomain::Disk => disk::act(platform, action, target, params, dry_run).await,
         ActDomain::Printer => printer::act(platform, action, target, params, dry_run).await,
         ActDomain::Package => package::act(platform, action, target, params, dry_run).await,
+        ActDomain::Process => process::act(platform, action, target, params, dry_run).await,
+        ActDomain::Container => container::act(platform, action, target, params, dry_run).await,
+        ActDomain::Certificate => certificate::act(platform, action, target, params, dry_run).await,
         _ => Ok(UnifiedResult::unsupported(&format!("act.{}", domain_str(domain)))),
     }
 }
@@ -70,6 +79,17 @@ pub async fn dispatch_verify(
         VerifyCheck::PrinterPrints => printer::verify_prints(platform, target, timeout_sec).await,
         VerifyCheck::DiskWritable => disk::verify_writable(platform, target, timeout_sec).await,
         VerifyCheck::PackageInstalled => package::verify_installed(platform, target, timeout_sec).await,
+        VerifyCheck::ProcessRunning => process::verify_running(platform, target, timeout_sec).await,
+        VerifyCheck::ProcessStopped => process::verify_stopped(platform, target, timeout_sec).await,
+        VerifyCheck::PortFree => process::verify_port_free(platform, target, params, timeout_sec).await,
+        VerifyCheck::ContainerRunning => container::verify_running(platform, target, timeout_sec).await,
+        VerifyCheck::ContainerHealthy => container::verify_healthy(platform, target, timeout_sec).await,
+        VerifyCheck::ImageExists => container::verify_image_exists(platform, target, timeout_sec).await,
+        VerifyCheck::VolumeExists => container::verify_volume_exists(platform, target, timeout_sec).await,
+        VerifyCheck::CertValid => certificate::verify_valid(platform, target, timeout_sec).await,
+        VerifyCheck::CertNotExpired => certificate::verify_not_expired(platform, target, params, timeout_sec).await,
+        VerifyCheck::CertChainComplete => certificate::verify_chain_complete(platform, target, timeout_sec).await,
+        VerifyCheck::HostnameMatches => certificate::verify_hostname_matches(platform, target, params, timeout_sec).await,
         _ => Ok(UnifiedResult::unsupported(check.as_str())),
     }
 }
@@ -113,6 +133,24 @@ pub fn domain_capabilities(domain: ObserveDomain) -> UnifiedResult {
             vec![],
             vec![],
         ),
+        ObserveDomain::Process => (
+            vec!["processes", "tree", "top_cpu", "top_memory", "open_files", "listening_ports"],
+            vec!["kill_graceful", "kill_force", "set_priority"],
+            vec!["process_running", "process_stopped", "port_free"],
+            vec!["kill_force and set_priority may require administrator privileges"],
+        ),
+        ObserveDomain::Container => (
+            vec!["containers", "images", "volumes", "networks", "container_logs"],
+            vec!["start_container", "stop_container", "restart_container", "remove_container", "pull_image", "prune_images", "prune_volumes"],
+            vec!["container_running", "container_healthy", "image_exists", "volume_exists"],
+            vec!["Requires Docker or Podman runtime"],
+        ),
+        ObserveDomain::Certificate => (
+            vec!["remote", "local", "keychain", "expiring_soon"],
+            vec!["install_cert", "remove_cert", "trust_cert", "untrust_cert"],
+            vec!["cert_valid", "cert_not_expired", "cert_chain_complete", "hostname_matches"],
+            vec!["Certificate trust store modifications require administrator privileges"],
+        ),
         _ => (vec![], vec![], vec![], vec![]),
     };
 
@@ -137,5 +175,8 @@ fn domain_str(d: ActDomain) -> &'static str {
         ActDomain::Share => "share",
         ActDomain::Identity => "identity",
         ActDomain::Security => "security",
+        ActDomain::Process => "process",
+        ActDomain::Container => "container",
+        ActDomain::Certificate => "certificate",
     }
 }

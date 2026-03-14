@@ -169,6 +169,109 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
             ]
         }),
 
+        ObserveDomain::Process => json!({
+            "domain": "process",
+            "observations": {
+                "processes": {
+                    "type": "array",
+                    "item": {
+                        "pid": "integer",
+                        "ppid": "integer",
+                        "name": "string",
+                        "user": "string | null",
+                        "status": "running | sleeping | zombie | stopped | idle",
+                        "cpu_percent": "float | null",
+                        "memory_bytes": "integer | null",
+                        "memory_percent": "float | null",
+                        "command": "string | null"
+                    }
+                },
+                "total_count": "integer",
+                "warnings": ["string"]
+            },
+            "actions": [
+                { "target": "<pid>",          "verbs": ["kill"],    "description": "Graceful kill (SIGTERM)" },
+                { "target": "<pid>",          "verbs": ["remove"],  "description": "Force kill (SIGKILL)" },
+                { "target": "<pid>.priority", "verbs": ["set"],     "description": "Set process priority (renice)", "args": { "priority": { "type": "integer", "description": "nice value (-20 to 20)" } } }
+            ]
+        }),
+
+        ObserveDomain::Container => json!({
+            "domain": "container",
+            "observations": {
+                "containers": {
+                    "type": "array",
+                    "item": {
+                        "id": "string",
+                        "name": "string",
+                        "image": "string",
+                        "status": "created | running | paused | restarting | exited | dead",
+                        "ports": "array | null",
+                        "health": "healthy | unhealthy | starting | none | null"
+                    }
+                },
+                "images": {
+                    "type": "array",
+                    "item": {
+                        "id": "string",
+                        "repository": "string",
+                        "tag": "string",
+                        "size_bytes": "integer"
+                    }
+                },
+                "volumes": {
+                    "type": "array",
+                    "item": {
+                        "name": "string",
+                        "driver": "string",
+                        "mountpoint": "string"
+                    }
+                },
+                "runtime": "docker | podman",
+                "warnings": ["string"]
+            },
+            "actions": [
+                { "target": "<id>",     "verbs": ["enable"],  "description": "Start a container" },
+                { "target": "<id>",     "verbs": ["disable"], "description": "Stop a container" },
+                { "target": "<id>",     "verbs": ["restart"], "description": "Restart a container" },
+                { "target": "<id>",     "verbs": ["remove"],  "description": "Remove a container" },
+                { "target": "<image>",  "verbs": ["add"],     "description": "Pull an image" },
+                { "target": "images",   "verbs": ["clear"],   "description": "Prune unused images" },
+                { "target": "volumes",  "verbs": ["clear"],   "description": "Prune unused volumes" }
+            ]
+        }),
+
+        ObserveDomain::Certificate => json!({
+            "domain": "certificate",
+            "observations": {
+                "certificates": {
+                    "type": "array",
+                    "item": {
+                        "subject": "string",
+                        "issuer": "string",
+                        "not_before": "string",
+                        "not_after": "string",
+                        "days_until_expiry": "integer",
+                        "is_expired": "bool",
+                        "is_self_signed": "bool",
+                        "san": ["string"],
+                        "key_algorithm": "string | null",
+                        "key_size": "integer | null",
+                        "fingerprint_sha256": "string | null",
+                        "chain_position": "leaf | intermediate | root | null",
+                        "source": "remote | local_file | keychain"
+                    }
+                },
+                "warnings": ["string"]
+            },
+            "actions": [
+                { "target": "<name>", "verbs": ["add"],     "description": "Install certificate to trust store" },
+                { "target": "<name>", "verbs": ["remove"],  "description": "Remove certificate from trust store" },
+                { "target": "<name>", "verbs": ["enable"],  "description": "Mark certificate as trusted" },
+                { "target": "<name>", "verbs": ["disable"], "description": "Mark certificate as untrusted" }
+            ]
+        }),
+
         _ => json!({
             "domain": domain.as_str(),
             "observations": {},
@@ -188,4 +291,7 @@ pub const SPEC_DOMAINS: &[ObserveDomain] = &[
     ObserveDomain::Share,
     ObserveDomain::Identity,
     ObserveDomain::Security,
+    ObserveDomain::Process,
+    ObserveDomain::Container,
+    ObserveDomain::Certificate,
 ];

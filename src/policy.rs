@@ -30,6 +30,23 @@ pub fn classify_risk(domain: ActDomain, action: &str) -> Risk {
         (ActDomain::Identity, _) => Risk::High,
         (ActDomain::Service, "set_startup_mode") => Risk::High,
 
+        // Process
+        (ActDomain::Process, "kill_graceful") => Risk::Medium,
+        (ActDomain::Process, "kill_force") => Risk::High,
+        (ActDomain::Process, "set_priority") => Risk::Low,
+
+        // Container
+        (ActDomain::Container, "start_container") => Risk::Medium,
+        (ActDomain::Container, "stop_container") => Risk::Medium,
+        (ActDomain::Container, "restart_container") => Risk::Medium,
+        (ActDomain::Container, "remove_container") => Risk::High,
+        (ActDomain::Container, "pull_image") => Risk::Low,
+        (ActDomain::Container, "prune_images") => Risk::High,
+        (ActDomain::Container, "prune_volumes") => Risk::High,
+
+        // Certificate — all high risk (system-wide TLS impact)
+        (ActDomain::Certificate, _) => Risk::High,
+
         // Default to medium for unknown actions
         _ => Risk::Medium,
     }

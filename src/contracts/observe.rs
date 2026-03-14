@@ -15,6 +15,8 @@ pub enum ObserveDomain {
     Log,
     Share,
     Security,
+    Container,
+    Certificate,
 }
 
 impl ObserveDomain {
@@ -31,6 +33,8 @@ impl ObserveDomain {
             Self::Log => "log",
             Self::Share => "share",
             Self::Security => "security",
+            Self::Container => "container",
+            Self::Certificate => "certificate",
         }
     }
 }

@@ -15,6 +15,17 @@ pub enum VerifyCheck {
     DiskWritable,
     LoginWorks,
     InternetReachable,
+    ProcessRunning,
+    ProcessStopped,
+    PortFree,
+    ContainerRunning,
+    ContainerHealthy,
+    ImageExists,
+    VolumeExists,
+    CertValid,
+    CertNotExpired,
+    CertChainComplete,
+    HostnameMatches,
 }
 
 impl VerifyCheck {
@@ -30,6 +41,17 @@ impl VerifyCheck {
             Self::DiskWritable => "disk_writable",
             Self::LoginWorks => "login_works",
             Self::InternetReachable => "internet_reachable",
+            Self::ProcessRunning => "process_running",
+            Self::ProcessStopped => "process_stopped",
+            Self::PortFree => "port_free",
+            Self::ContainerRunning => "container_running",
+            Self::ContainerHealthy => "container_healthy",
+            Self::ImageExists => "image_exists",
+            Self::VolumeExists => "volume_exists",
+            Self::CertValid => "cert_valid",
+            Self::CertNotExpired => "cert_not_expired",
+            Self::CertChainComplete => "cert_chain_complete",
+            Self::HostnameMatches => "hostname_matches",
         }
     }
 }
@@ -61,6 +83,14 @@ pub fn recommended_verifications(action: &str) -> &'static [&'static str] {
         "repair_package" | "install_package" | "update_package" => &["package_installed"],
         "clear_temp_files" | "remove_large_known_caches" => &["disk_writable"],
         "map_share" | "refresh_credentials" => &["share_accessible"],
+        "kill_graceful" => &["process_stopped"],
+        "kill_force" => &["process_stopped", "port_free"],
+        "set_priority" => &["process_running"],
+        "start_container" => &["container_running", "container_healthy"],
+        "restart_container" => &["container_running", "container_healthy"],
+        "pull_image" => &["image_exists"],
+        "install_cert" => &["cert_valid", "cert_not_expired"],
+        "trust_cert" => &["cert_chain_complete", "hostname_matches"],
         _ => &[],
     }
 }
