@@ -8,22 +8,55 @@ use crate::schemas::{ServiceState, ServiceStatus};
 pub async fn observe(
     target: Option<&str>,
 ) -> Result<UnifiedResult> {
-    if let Some(name) = target {
-        return observe_single(name).await;
+    match target {
+        Some("all") => observe_list(false).await,
+        Some(name) => observe_single(name).await,
+        None => observe_list(true).await,
     }
+}
 
-    // List all running services
+async fn observe_list(non_apple_first: bool) -> Result<UnifiedResult> {
     let result = exec("launchctl", &["list"], ExecOpts::default()).await?;
-    let services = parse_service_list(&result.stdout);
-    let summary = format!("{} services running.", services.len());
+    let mut services = parse_service_list(&result.stdout);
+    let total = services.len();
 
-    Ok(UnifiedResult::ok(
-        summary,
-        serde_json::to_value(&services)?,
-    )
-    .with_suggestions(vec![
-        "observe(service, target: \"<service_name>\") for details".into(),
-    ]))
+    if non_apple_first {
+        // Partition: non-Apple running services first (the ones you care about),
+        // then Apple running, then stopped
+        let mut user_running: Vec<ServiceState> = Vec::new();
+        let mut apple_running: Vec<ServiceState> = Vec::new();
+
+        for s in &services {
+            if matches!(s.status, ServiceStatus::Running) {
+                if s.name.starts_with("com.apple.") || s.name.starts_with("application.com.apple.") {
+                    apple_running.push(s.clone());
+                } else {
+                    user_running.push(s.clone());
+                }
+            }
+        }
+
+        user_running.sort_by(|a, b| a.name.cmp(&b.name));
+
+        let user_count = user_running.len();
+        let apple_count = apple_running.len();
+
+        // Default: show non-Apple running services (usually ~10-30)
+        // If there are too many, truncate
+        user_running.truncate(50);
+
+        services = user_running;
+
+        let summary = format!(
+            "{} non-Apple services running ({} Apple services hidden, {} total). Use target \"all\" for full list.",
+            user_count, apple_count, total
+        );
+
+        Ok(UnifiedResult::ok(summary, serde_json::to_value(&services)?))
+    } else {
+        let summary = format!("{total} services.");
+        Ok(UnifiedResult::ok(summary, serde_json::to_value(&services)?))
+    }
 }
 
 async fn observe_single(name: &str) -> Result<UnifiedResult> {

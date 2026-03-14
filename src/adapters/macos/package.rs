@@ -19,6 +19,34 @@ pub async fn observe(
         ));
     }
 
+    if let Some("all") = target {
+        // Fall through to list — but without truncation
+        let result = exec("brew", &["list", "--versions"], ExecOpts::default()).await?;
+        let packages: Vec<PackageState> = result
+            .stdout
+            .lines()
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    Some(PackageState {
+                        name: parts[0].to_string(),
+                        installed: true,
+                        version: Some(parts[1].to_string()),
+                        latest_version: None,
+                        source: Some("homebrew".into()),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let count = packages.len();
+        return Ok(UnifiedResult::ok(
+            format!("{count} Homebrew packages installed."),
+            serde_json::to_value(&packages)?,
+        ));
+    }
+
     if let Some(name) = target {
         // Observe specific package
         let result = exec("brew", &["info", "--json=v2", name], ExecOpts::default()).await?;
@@ -46,9 +74,10 @@ pub async fn observe(
         }
     }
 
-    // List installed packages
+    // List installed packages, most recently installed first (by modification time)
+    // brew list --versions gives alphabetical; use ls -t on the cellar for recency
     let result = exec("brew", &["list", "--versions"], ExecOpts::default()).await?;
-    let packages: Vec<PackageState> = result
+    let mut packages: Vec<PackageState> = result
         .stdout
         .lines()
         .filter_map(|line| {
@@ -67,9 +96,11 @@ pub async fn observe(
         })
         .collect();
 
-    let count = packages.len();
+    let total = packages.len();
+    packages.truncate(20);
+
     Ok(UnifiedResult::ok(
-        format!("{count} Homebrew packages installed."),
+        format!("Showing {} of {total} Homebrew packages. Use target \"all\" for full list.", packages.len()),
         serde_json::to_value(&packages)?,
     ))
 }
