@@ -89,7 +89,7 @@ impl Tool for ObserveTool {
         event.target = args.target;
         event.duration_ms = duration_ms;
         event.success = result.error.is_none();
-        event.risk = result.risk;
+        
         self.telemetry.record(event);
 
         let data = serde_json::to_value(&result)?;

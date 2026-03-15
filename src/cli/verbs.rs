@@ -22,6 +22,8 @@ pub struct ResolvedAction {
     pub handler: String,
     pub target: Option<String>,
     pub params: Option<Value>,
+    /// Observation schema paths this action mutates.
+    pub mutates: Vec<String>,
 }
 
 /// Parse verb arguments as key=value pairs.
@@ -88,6 +90,7 @@ pub fn resolve(
                 handler: entry.handler.clone(),
                 target: extracted,
                 params,
+                mutates: entry.mutates.clone(),
             });
         }
     }
@@ -172,6 +175,7 @@ mod tests {
                 target: e.target.to_string(),
                 verb: e.verb.to_string(),
                 handler: e.handler.to_string(),
+                mutates: e.mutates.iter().map(|s| s.to_string()).collect(),
             })
             .collect()
     }

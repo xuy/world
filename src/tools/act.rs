@@ -124,7 +124,7 @@ impl Tool for ActTool {
         event.target = args.target;
         event.duration_ms = duration_ms;
         event.success = result.error.is_none();
-        event.risk = result.risk;
+        
         self.telemetry.record(event);
 
         // Add recommended verifications to suggestions

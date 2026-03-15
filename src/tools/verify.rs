@@ -92,7 +92,7 @@ impl Tool for VerifyTool {
         event.target = args.target;
         event.duration_ms = duration_ms;
         event.success = result.error.is_none();
-        event.risk = result.risk;
+        
         event.verification_of = self.telemetry.last_remediation_id();
         self.telemetry.record(event);
 

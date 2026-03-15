@@ -1,7 +1,6 @@
 //! Structured event logging for tool calls.
 //! In-memory for now; can persist to SQLite later.
 
-use crate::contracts::Risk;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
@@ -15,7 +14,8 @@ pub struct ToolCallEvent {
     pub domain: Option<String>,
     pub action: Option<String>,
     pub target: Option<String>,
-    pub risk: Option<Risk>,
+    /// Observation schema paths this action mutates.
+    pub mutates: Option<Vec<String>>,
     pub duration_ms: u64,
     pub success: bool,
     pub error_code: Option<String>,
@@ -33,7 +33,7 @@ impl ToolCallEvent {
             domain: None,
             action: None,
             target: None,
-            risk: None,
+            mutates: None,
             duration_ms: 0,
             success: false,
             error_code: None,

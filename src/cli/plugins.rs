@@ -192,10 +192,6 @@ impl DomainPlugin for Plugin {
         &self.entries
     }
 
-    fn classify_risk(&self, handler: &str) -> Risk {
-        self.policy.get(handler).copied().unwrap_or(Risk::Medium)
-    }
-
     fn is_allowed(&self, _handler: &str) -> bool {
         // External plugins manage their own allowlists
         true
