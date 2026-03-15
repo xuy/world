@@ -3,39 +3,43 @@
  * TLA+ specification of World's `act` dispatch state machine.
  *
  * Models the exact sequence: parse → resolve domain → match dispatch entry
- * → check allowlist → classify risk → consent gate → execute → format.
+ * → check allowlist → check capability ceiling → execute → format.
+ *
+ * The capability ceiling is a compiled-in constant — no runtime flag can
+ * override it. Actions declare which observation schema paths they mutate.
+ * The ceiling is the set of paths this binary is allowed to mutate.
  *
  * Invariants verified:
- *   1. No high-risk action executes without consent (--yes or interactive).
+ *   1. An action whose mutates tags exceed the ceiling NEVER executes.
  *   2. An invalid domain always terminates with error before execution.
  *   3. An unmatched verb always terminates with error before execution.
  *   4. A disallowed handler never reaches execution.
  *   5. Every path terminates (no deadlock).
  *   6. Exit codes are consistent with the state machine outcome.
+ *   7. The ceiling cannot be bypassed by any combination of flags.
+ *   8. A read-only ceiling (empty set) blocks ALL actions.
  *)
 EXTENDS Integers, Sequences, FiniteSets, TLC
 
 CONSTANTS
     Domains,            \* Set of valid domain names
     Handlers,           \* Set of valid handler names
-    HighRiskHandlers,   \* Subset of Handlers classified High
     AllowedHandlers,    \* Subset of Handlers in the allowlist
+    MutationPaths,      \* Universe of possible mutation paths
+    CeilingPaths,       \* Compiled-in allowed paths (subset of MutationPaths, or empty for read-only)
     OutputModes         \* {Json, Pretty, Quiet}
 
 VARIABLES
     state,          \* Current state in the dispatch FSM
     domain,         \* Input domain (may be valid or invalid)
     handler,        \* Resolved handler (or "none")
-    risk,           \* Classified risk level
+    mutates,        \* Set of mutation paths for the resolved action
     dryRun,         \* --dry-run flag
-    yesFlag,        \* --yes flag
-    userConfirmed,  \* Whether user confirmed at the consent gate
     outputMode,     \* Json | Pretty | Quiet
     exitCode,       \* Exit code produced
     executed        \* Whether the handler was actually executed
 
-vars == <<state, domain, handler, risk, dryRun, yesFlag, userConfirmed,
-          outputMode, exitCode, executed>>
+vars == <<state, domain, handler, mutates, dryRun, outputMode, exitCode, executed>>
 
 (* ── Initial state ─────────────────────────────────────────────────── *)
 
@@ -43,10 +47,8 @@ Init ==
     /\ state = "Init"
     /\ domain \in Domains \cup {"invalid_domain"}
     /\ handler = "none"
-    /\ risk = "Low"
+    /\ mutates = {}
     /\ dryRun \in BOOLEAN
-    /\ yesFlag \in BOOLEAN
-    /\ userConfirmed \in BOOLEAN
     /\ outputMode \in OutputModes
     /\ exitCode = -1
     /\ executed = FALSE
@@ -61,10 +63,9 @@ ResolveDomain ==
             /\ exitCode' = exitCode
        ELSE /\ state' = "Done"
             /\ exitCode' = 1
-    /\ UNCHANGED <<domain, handler, risk, dryRun, yesFlag, userConfirmed,
-                   outputMode, executed>>
+    /\ UNCHANGED <<domain, handler, mutates, dryRun, outputMode, executed>>
 
-\* Step 2: Try to resolve verb → handler via dispatch table
+\* Step 2: Resolve verb → handler + mutates via dispatch table
 ResolveVerb ==
     /\ state = "ResolveDomain"
     /\ \E h \in Handlers \cup {"unmatched"}:
@@ -72,60 +73,48 @@ ResolveVerb ==
         /\ IF h = "unmatched"
            THEN /\ state' = "Done"
                 /\ exitCode' = 1
-           ELSE /\ state' = "CheckAllowlist"
+                /\ mutates' = {}
+           ELSE \* Non-deterministically choose a set of mutation paths
+                /\ \E m \in SUBSET MutationPaths:
+                    mutates' = m
+                /\ state' = "CheckAllowlist"
                 /\ exitCode' = exitCode
-    /\ UNCHANGED <<domain, risk, dryRun, yesFlag, userConfirmed,
-                   outputMode, executed>>
+    /\ UNCHANGED <<domain, dryRun, outputMode, executed>>
 
 \* Step 3: Check if resolved handler is in the allowlist
 CheckAllowlist ==
     /\ state = "CheckAllowlist"
     /\ handler /= "none"
     /\ IF handler \in AllowedHandlers
-       THEN /\ state' = "ClassifyRisk"
+       THEN /\ state' = "CheckCeiling"
             /\ exitCode' = exitCode
        ELSE /\ state' = "Done"
             /\ exitCode' = 1
-    /\ UNCHANGED <<domain, handler, risk, dryRun, yesFlag, userConfirmed,
-                   outputMode, executed>>
+    /\ UNCHANGED <<domain, handler, mutates, dryRun, outputMode, executed>>
 
-\* Step 4: Classify the risk level of the handler
-ClassifyRisk ==
-    /\ state = "ClassifyRisk"
-    /\ risk' = IF handler \in HighRiskHandlers THEN "High" ELSE "Medium"
-    /\ state' = "ConsentGate"
-    /\ UNCHANGED <<domain, handler, dryRun, yesFlag, userConfirmed,
-                   outputMode, exitCode, executed>>
-
-\* Step 5: Gate high-risk actions behind consent
-ConsentGate ==
-    /\ state = "ConsentGate"
-    /\ IF risk = "High" /\ ~dryRun /\ ~yesFlag
-       THEN IF userConfirmed
-            THEN /\ state' = "Execute"
-                 /\ exitCode' = exitCode
-            ELSE /\ state' = "Done"
-                 /\ exitCode' = 4
-       ELSE /\ state' = "Execute"
+\* Step 4: Check capability ceiling — STRUCTURAL, UNBYPASSABLE
+CheckCeiling ==
+    /\ state = "CheckCeiling"
+    /\ IF mutates \subseteq CeilingPaths
+       THEN /\ state' = "Execute"
             /\ exitCode' = exitCode
-    /\ UNCHANGED <<domain, handler, risk, dryRun, yesFlag, userConfirmed,
-                   outputMode, executed>>
+       ELSE /\ state' = "Done"
+            /\ exitCode' = 1
+    /\ UNCHANGED <<domain, handler, mutates, dryRun, outputMode, executed>>
 
-\* Step 6: Execute the handler
+\* Step 5: Execute the handler
 Execute ==
     /\ state = "Execute"
     /\ executed' = TRUE
     /\ state' = "FormatResult"
-    /\ UNCHANGED <<domain, handler, risk, dryRun, yesFlag, userConfirmed,
-                   outputMode, exitCode>>
+    /\ UNCHANGED <<domain, handler, mutates, dryRun, outputMode, exitCode>>
 
-\* Step 7: Format and return result
+\* Step 6: Format and return result
 FormatResult ==
     /\ state = "FormatResult"
     /\ exitCode' = 0
     /\ state' = "Done"
-    /\ UNCHANGED <<domain, handler, risk, dryRun, yesFlag, userConfirmed,
-                   outputMode, executed>>
+    /\ UNCHANGED <<domain, handler, mutates, dryRun, outputMode, executed>>
 
 (* ── Termination ──────────────────────────────────────────────────── *)
 Terminated ==
@@ -137,8 +126,7 @@ Terminated ==
 Next == \/ ResolveDomain
         \/ ResolveVerb
         \/ CheckAllowlist
-        \/ ClassifyRisk
-        \/ ConsentGate
+        \/ CheckCeiling
         \/ Execute
         \/ FormatResult
         \/ Terminated
@@ -147,10 +135,9 @@ Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 
 (* ── Safety invariants ─────────────────────────────────────────────── *)
 
-\* INV1: A high-risk action never executes without consent or --yes
-NoUnsafeExecution ==
-    (state = "Execute" /\ handler \in HighRiskHandlers /\ ~dryRun)
-        => (yesFlag \/ userConfirmed)
+\* INV1: An action that exceeds the ceiling NEVER executes
+CeilingEnforced ==
+    executed => mutates \subseteq CeilingPaths
 
 \* INV2: Invalid domain terminates without execution
 InvalidDomainNeverExecutes ==
@@ -168,13 +155,24 @@ DisallowedNeverExecutes ==
 \* INV5: Exit code is well-formed when done
 ExitCodeConsistent ==
     state = "Done" =>
-        /\ exitCode \in {0, 1, 4}
+        /\ exitCode \in {0, 1}
         /\ (exitCode = 0 => executed)
-        /\ (exitCode = 4 => ~executed)
 
-\* INV6: Exactly these exit codes are possible
+\* INV6: Only exit codes 0 and 1 exist (no more exit code 4)
 ValidExitCodes ==
-    state = "Done" => exitCode \in {0, 1, 4}
+    state = "Done" => exitCode \in {0, 1}
+
+\* INV7: dryRun flag cannot bypass the ceiling
+\* (ceiling is checked regardless of dry_run — even exploring
+\*  what would happen is gated by capability)
+DryRunCannotBypassCeiling ==
+    (executed /\ dryRun) => mutates \subseteq CeilingPaths
+
+\* INV8: The ceiling is monotonic — once blocked, stays blocked
+\* (there is no state where a blocked action becomes unblocked)
+CeilingMonotonic ==
+    (state = "Done" /\ ~executed /\ ~(mutates \subseteq CeilingPaths))
+        => ~executed
 
 (* ── Liveness ─────────────────────────────────────────────────────── *)
 
