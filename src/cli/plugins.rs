@@ -20,7 +20,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::contracts::{Risk, UnifiedResult};
+use crate::contracts::UnifiedResult;
 use crate::plugin::{DispatchEntry, DomainPlugin};
 
 /// A loaded external plugin.
@@ -29,15 +29,12 @@ pub struct Plugin {
     pub domain: String,
     pub spec: Value,
     pub entries: Vec<DispatchEntry>,
-    pub policy: std::collections::HashMap<String, Risk>,
     pub handler_path: PathBuf,
 }
 
 #[derive(Debug, Deserialize)]
 struct DispatchFile {
     entries: Vec<DispatchEntry>,
-    #[serde(default)]
-    policy: std::collections::HashMap<String, String>,
 }
 
 impl Plugin {
@@ -56,20 +53,6 @@ impl Plugin {
         let dispatch_file: DispatchFile =
             serde_json::from_str(&std::fs::read_to_string(&dispatch_path)?)?;
 
-        // Convert policy strings to Risk
-        let policy = dispatch_file
-            .policy
-            .into_iter()
-            .map(|(handler, risk_str)| {
-                let risk = match risk_str.as_str() {
-                    "low" => Risk::Low,
-                    "high" => Risk::High,
-                    _ => Risk::Medium,
-                };
-                (handler, risk)
-            })
-            .collect();
-
         // Find handler executable
         let handler_path = find_handler(dir)?;
 
@@ -77,7 +60,6 @@ impl Plugin {
             domain,
             spec,
             entries: dispatch_file.entries,
-            policy,
             handler_path,
         })
     }
