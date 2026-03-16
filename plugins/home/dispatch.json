@@ -1,0 +1,11 @@
+{
+  "entries": [
+    { "target": "", "verb": "open",    "handler": "connect",    "mutates": ["home.*"], "default_arg": "url" },
+    { "target": "", "verb": "close",   "handler": "disconnect", "mutates": ["home.*"] },
+    { "target": "<id>", "verb": "enable",  "handler": "turn_on",  "mutates": ["home.lights", "home.covers"] },
+    { "target": "<id>", "verb": "disable", "handler": "turn_off", "mutates": ["home.lights", "home.covers"] },
+    { "target": "<id>", "verb": "set",     "handler": "set_value", "mutates": ["home.climate"], "default_arg": "temperature" },
+    { "target": "<id>", "verb": "lock",    "handler": "lock",     "mutates": ["home.locks"] },
+    { "target": "<id>", "verb": "unlock",  "handler": "unlock",   "mutates": ["home.locks"] }
+  ]
+}

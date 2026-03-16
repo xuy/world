@@ -100,6 +100,7 @@ Fields that vary become `{mean, min, max, delta, rate_per_sec}`. Constant fields
 | **log** | Recent errors | *(read-only)* |
 | **browser** *(session)* | Page URL + accessibility tree | open, close, click, fill, select, hover, scroll, press, eval |
 | **ssh** *(session)* | Remote host info + disk usage | open, close, exec |
+| **home** *(session)* | Lights, climate, sensors, locks, covers | open, close, enable, disable, set, lock, unlock |
 
 Package managers are separate domains (brew, pip, npm) rather than a single "package" abstraction, because they have different scopes (system, virtualenv, node_modules) and the handler should use the runtime it observes.
 

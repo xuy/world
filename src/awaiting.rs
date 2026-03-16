@@ -322,6 +322,8 @@ async fn poll_until(
 pub enum PluginCondition {
     /// True when a field in details is non-null and non-empty.
     FieldPresent(&'static str),
+    /// True when a field is a non-empty array.
+    FieldNonEmpty(&'static str),
     /// True when details.field contains the target string.
     FieldContains(&'static str),
 }
@@ -332,6 +334,9 @@ impl PluginCondition {
         match self {
             PluginCondition::FieldPresent(field) => {
                 details.get(field).is_some_and(|v| !v.is_null() && v.as_str() != Some(""))
+            }
+            PluginCondition::FieldNonEmpty(field) => {
+                details.get(field).is_some_and(|v| v.as_array().is_some_and(|a| !a.is_empty()))
             }
             PluginCondition::FieldContains(field) => {
                 let Some(needle) = target else { return false };
@@ -355,6 +360,9 @@ pub fn resolve_plugin_condition(domain: &str, condition: &str) -> Option<PluginC
         // SSH
         ("ssh", "connected") => Some(PluginCondition::FieldPresent("host")),
 
+        // Home
+        ("home", "connected") => Some(PluginCondition::FieldNonEmpty("lights")),
+
         _ => None,
     }
 }
@@ -364,6 +372,7 @@ pub fn plugin_conditions_for(domain: &str) -> &'static [&'static str] {
     match domain {
         "browser" => &["loaded", "title_contains"],
         "ssh" => &["connected"],
+        "home" => &["connected"],
         _ => &[],
     }
 }

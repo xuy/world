@@ -1,0 +1,57 @@
+{
+  "domain": "home",
+  "session": true,
+  "observations": {
+    "lights": {
+      "type": "array",
+      "item": {
+        "id": "string",
+        "name": "string",
+        "state": "on | off"
+      }
+    },
+    "climate": {
+      "type": "array",
+      "item": {
+        "id": "string",
+        "name": "string",
+        "target_temp": "float | null",
+        "unit": "string | null"
+      }
+    },
+    "sensors": {
+      "type": "array",
+      "item": {
+        "id": "string",
+        "name": "string",
+        "state": "string",
+        "unit": "string | null"
+      }
+    },
+    "locks": {
+      "type": "array",
+      "item": {
+        "id": "string",
+        "name": "string",
+        "state": "locked | unlocked"
+      }
+    },
+    "covers": {
+      "type": "array",
+      "item": {
+        "id": "string",
+        "name": "string",
+        "state": "open | closed"
+      }
+    }
+  },
+  "actions": [
+    { "verbs": ["open"],  "mutates": ["home.*"], "args": { "url": { "type": "string", "description": "HomeAssistant URL" }, "token": { "type": "string", "description": "Long-lived access token" } }, "description": "Connect to HomeAssistant instance" },
+    { "verbs": ["close"], "mutates": ["home.*"], "description": "Disconnect from HomeAssistant" },
+    { "target": "<id>", "verbs": ["enable"],  "mutates": ["home.lights", "home.covers"], "description": "Turn on light / open cover" },
+    { "target": "<id>", "verbs": ["disable"], "mutates": ["home.lights", "home.covers"], "description": "Turn off light / close cover" },
+    { "target": "<id>", "verbs": ["set"],     "mutates": ["home.climate"], "args": { "temperature": { "type": "number" } }, "description": "Set thermostat temperature" },
+    { "target": "<id>", "verbs": ["lock"],    "mutates": ["home.locks"], "description": "Lock" },
+    { "target": "<id>", "verbs": ["unlock"],  "mutates": ["home.locks"], "description": "Unlock" }
+  ]
+}
