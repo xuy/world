@@ -9,7 +9,7 @@ pub enum ActDomain {
     Service,
     Printer,
     Disk,
-    Package,
+    Brew,
     Process,
     Container,
 }
@@ -60,7 +60,7 @@ pub fn allowed_actions(domain: ActDomain) -> &'static [&'static str] {
             "mount_share",
             "unmount_share",
         ],
-        ActDomain::Package => &[
+        ActDomain::Brew => &[
             "install_package",
             "uninstall_package",
             "repair_package",

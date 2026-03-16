@@ -28,7 +28,7 @@ impl Tool for VerifyTool {
     }
 
     fn description(&self) -> &str {
-        "Check whether a target condition holds. Use after an action to confirm the intended outcome. Checks include: service_healthy, port_open, host_reachable, dns_resolves, printer_prints, package_installed, disk_writable, internet_reachable, process_running, process_stopped, container_running, container_healthy."
+        "Check whether a target condition holds. Use after an action to confirm the intended outcome. Checks include: service_healthy, port_open, host_reachable, dns_resolves, printer_prints, brew_installed, disk_writable, internet_reachable, process_running, process_stopped, container_running, container_healthy."
     }
 
     fn input_schema(&self) -> Value {
@@ -40,7 +40,7 @@ impl Tool for VerifyTool {
                     "enum": [
                         "service_healthy", "port_open", "host_reachable",
                         "dns_resolves", "printer_prints",
-                        "package_installed", "disk_writable",
+                        "brew_installed", "disk_writable",
                         "internet_reachable",
                         "process_running", "process_stopped", "port_free",
                         "container_running", "container_healthy",

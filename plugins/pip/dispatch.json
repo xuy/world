@@ -1,8 +1,8 @@
 {
   "entries": [
-    { "target": "<name>", "verb": "add",    "handler": "install",     "mutates": ["package.installed", "package.version"] },
-    { "target": "<name>", "verb": "remove", "handler": "uninstall",   "mutates": ["package.installed"] },
-    { "target": "<name>", "verb": "set",    "handler": "pin_version", "mutates": ["package.version"] },
-    { "target": "all",    "verb": "set",    "handler": "upgrade_all", "mutates": ["package.installed", "package.version"] }
+    { "target": "<name>", "verb": "add",    "handler": "install",     "mutates": ["pip.installed", "pip.version"] },
+    { "target": "<name>", "verb": "remove", "handler": "uninstall",   "mutates": ["pip.installed"] },
+    { "target": "<name>", "verb": "set",    "handler": "pin_version", "mutates": ["pip.version"] },
+    { "target": "all",    "verb": "set",    "handler": "upgrade_all", "mutates": ["pip.installed", "pip.version"] }
   ]
 }

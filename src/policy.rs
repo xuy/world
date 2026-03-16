@@ -25,7 +25,7 @@ pub fn classify_risk(domain: ActDomain, action: &str) -> Risk {
         // High risk — data loss or security implications
         (ActDomain::Network, "forget_wifi") => Risk::High,
         (ActDomain::Printer, "reinstall_printer_driver") => Risk::High,
-        (ActDomain::Package, _) => Risk::High,
+        (ActDomain::Brew, _) => Risk::High,
         (ActDomain::Service, "set_startup_mode") => Risk::High,
 
         // Process

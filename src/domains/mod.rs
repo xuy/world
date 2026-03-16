@@ -2,7 +2,7 @@ pub mod container;
 pub mod disk;
 pub mod log;
 pub mod network;
-pub mod package;
+pub mod brew;
 pub mod printer;
 pub mod process;
 pub mod service;
@@ -29,7 +29,7 @@ pub async fn dispatch_observe(
         ObserveDomain::Service => service::observe(platform, target).await,
         ObserveDomain::Disk => disk::observe(platform, target).await,
         ObserveDomain::Printer => printer::observe(platform, target).await,
-        ObserveDomain::Package => package::observe(platform, target).await,
+        ObserveDomain::Brew => brew::observe(platform, target).await,
         ObserveDomain::Log => log::observe(platform, target, since, limit).await,
         ObserveDomain::Process => process::observe(platform, target, limit).await,
         ObserveDomain::Container => container::observe(platform, target, limit).await,
@@ -51,7 +51,7 @@ pub async fn dispatch_act(
         ActDomain::Service => service::act(platform, action, target, params, dry_run).await,
         ActDomain::Disk => disk::act(platform, action, target, params, dry_run).await,
         ActDomain::Printer => printer::act(platform, action, target, params, dry_run).await,
-        ActDomain::Package => package::act(platform, action, target, params, dry_run).await,
+        ActDomain::Brew => brew::act(platform, action, target, params, dry_run).await,
         ActDomain::Process => process::act(platform, action, target, params, dry_run).await,
         ActDomain::Container => container::act(platform, action, target, params, dry_run).await,
     }
@@ -73,7 +73,7 @@ pub async fn dispatch_verify(
         VerifyCheck::ServiceHealthy => service::verify_healthy(platform, target, timeout_sec).await,
         VerifyCheck::PrinterPrints => printer::verify_prints(platform, target, timeout_sec).await,
         VerifyCheck::DiskWritable => disk::verify_writable(platform, target, timeout_sec).await,
-        VerifyCheck::PackageInstalled => package::verify_installed(platform, target, timeout_sec).await,
+        VerifyCheck::BrewInstalled => brew::verify_installed(platform, target, timeout_sec).await,
         VerifyCheck::ProcessRunning => process::verify_running(platform, target, timeout_sec).await,
         VerifyCheck::ProcessStopped => process::verify_stopped(platform, target, timeout_sec).await,
         VerifyCheck::PortFree => process::verify_port_free(platform, target, params, timeout_sec).await,
@@ -111,10 +111,10 @@ pub fn domain_capabilities(domain: ObserveDomain) -> UnifiedResult {
             vec!["printer_prints", "host_reachable"],
             vec!["reinstall_printer_driver may require administrator privileges"],
         ),
-        ObserveDomain::Package => (
+        ObserveDomain::Brew => (
             vec!["installed", "version", "recent_updates"],
             vec!["repair_package", "install_package", "update_package"],
-            vec!["package_installed"],
+            vec!["brew_installed"],
             vec![],
         ),
         ObserveDomain::Log => (

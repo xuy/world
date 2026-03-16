@@ -53,8 +53,8 @@ pub fn resolve_condition(domain: &str, condition: &str) -> Option<VerifyCheck> {
         // Disk
         ("disk", "writable") => Some(VerifyCheck::DiskWritable),
 
-        // Package
-        ("package", "installed") => Some(VerifyCheck::PackageInstalled),
+        // Brew
+        ("brew", "installed") => Some(VerifyCheck::BrewInstalled),
 
         // Printer
         ("printer", "prints") => Some(VerifyCheck::PrinterPrints),
@@ -71,7 +71,7 @@ pub fn conditions_for(domain: &str) -> &'static [&'static str] {
         "process" => &["running", "stopped", "port_free"],
         "container" => &["running", "healthy", "image_exists", "volume_exists"],
         "disk" => &["writable"],
-        "package" => &["installed"],
+        "brew" => &["installed"],
         "printer" => &["prints"],
         _ => &[],
     }

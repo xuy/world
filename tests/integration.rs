@@ -68,7 +68,7 @@ fn test_act_safety_tiers() {
     );
 
     // High-risk action should need approval
-    let high_risk = json!({"domain": "package", "action": "install_package", "target": "foo"});
+    let high_risk = json!({"domain": "brew", "action": "install_package", "target": "foo"});
     assert_eq!(
         act.safety_tier_for_input(&high_risk),
         world::tool::SafetyTier::NeedsApproval,
@@ -143,7 +143,7 @@ fn test_policy_risk_classification() {
 
     assert_eq!(policy::classify_risk(ActDomain::Network, "flush_dns"), Risk::Low);
     assert_eq!(policy::classify_risk(ActDomain::Service, "restart_service"), Risk::Medium);
-    assert_eq!(policy::classify_risk(ActDomain::Package, "install_package"), Risk::High);
+    assert_eq!(policy::classify_risk(ActDomain::Brew, "install_package"), Risk::High);
 }
 
 #[test]
@@ -272,7 +272,7 @@ async fn test_progressive_disclosure_all_domains() {
     let tools = tools();
     let observe = find_tool(&tools, "observe");
 
-    for domain in &["network", "service", "disk", "printer", "package", "log"] {
+    for domain in &["network", "service", "disk", "printer", "brew", "log"] {
         let input = json!({"domain": domain});
         let result = observe.execute(&input).await.unwrap();
         let data = &result.data;

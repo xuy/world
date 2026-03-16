@@ -9,8 +9,8 @@ pub async fn observe(
     target: Option<&str>,
 ) -> Result<UnifiedResult> {
     match platform {
-        Platform::MacOS => crate::adapters::macos::package::observe(target).await,
-        _ => Ok(UnifiedResult::unsupported("package observation")),
+        Platform::MacOS => crate::adapters::macos::brew::observe(target).await,
+        _ => Ok(UnifiedResult::unsupported("brew observation")),
     }
 }
 
@@ -23,9 +23,9 @@ pub async fn act(
 ) -> Result<UnifiedResult> {
     match platform {
         Platform::MacOS => {
-            crate::adapters::macos::package::act(action, target, dry_run).await
+            crate::adapters::macos::brew::act(action, target, dry_run).await
         }
-        _ => Ok(UnifiedResult::unsupported(&format!("package.{action}"))),
+        _ => Ok(UnifiedResult::unsupported(&format!("brew.{action}"))),
     }
 }
 
@@ -36,9 +36,9 @@ pub async fn verify_installed(
 ) -> Result<UnifiedResult> {
     match platform {
         Platform::MacOS => {
-            let name = target.ok_or_else(|| anyhow::anyhow!("package name required"))?;
-            crate::adapters::macos::package::verify_installed(name).await
+            let name = target.ok_or_else(|| anyhow::anyhow!("brew package name required"))?;
+            crate::adapters::macos::brew::verify_installed(name).await
         }
-        _ => Ok(UnifiedResult::unsupported("package_installed")),
+        _ => Ok(UnifiedResult::unsupported("brew_installed")),
     }
 }

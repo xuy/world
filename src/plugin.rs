@@ -226,9 +226,9 @@ pub fn native_plugins(platform: Platform) -> Vec<Box<dyn DomainPlugin>> {
             platform,
         )),
         Box::new(NativePlugin::new(
-            "package",
-            ObserveDomain::Package,
-            Some(ActDomain::Package),
+            "brew",
+            ObserveDomain::Brew,
+            Some(ActDomain::Brew),
             platform,
         )),
         Box::new(NativePlugin::new(

@@ -8,7 +8,7 @@
 //!
 //! Verb arguments use key=value syntax:
 //!   world act service nginx.startup_mode set mode=auto
-//!   world act package jq set version=latest
+//!   world act brew jq set version=latest
 
 use std::collections::BTreeMap;
 
@@ -264,9 +264,9 @@ mod tests {
         assert_eq!(r.handler, "restart_service");
         assert_eq!(r.target.as_deref(), Some("nginx"));
 
-        // Package jq add
-        let entries = entries_for("package");
-        let r = resolve("package", &entries, "jq", "add", &[]).unwrap();
+        // Brew jq add
+        let entries = entries_for("brew");
+        let r = resolve("brew", &entries, "jq", "add", &[]).unwrap();
         assert_eq!(r.handler, "install_package");
         assert_eq!(r.target.as_deref(), Some("jq"));
 

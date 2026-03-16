@@ -48,11 +48,11 @@ pub fn entries(domain: &str) -> &'static [Entry] {
             Entry { target: "default",       verb: "set",     handler: "set_default_printer",        mutates: &["printer.is_default"] },
             Entry { target: "<name>.driver", verb: "reset",   handler: "reinstall_printer_driver",   mutates: &["printer.driver"] },
         ],
-        "package" => &[
-            Entry { target: "<name>", verb: "add",    handler: "install_package",    mutates: &["package.installed", "package.version"] },
-            Entry { target: "<name>", verb: "remove", handler: "uninstall_package",  mutates: &["package.installed"] },
-            Entry { target: "<name>", verb: "reset",  handler: "repair_package",     mutates: &["package.version"] },
-            Entry { target: "<name>", verb: "set",    handler: "update_package",     mutates: &["package.version"] },
+        "brew" => &[
+            Entry { target: "<name>", verb: "add",    handler: "install_package",    mutates: &["brew.installed", "brew.version"] },
+            Entry { target: "<name>", verb: "remove", handler: "uninstall_package",  mutates: &["brew.installed"] },
+            Entry { target: "<name>", verb: "reset",  handler: "repair_package",     mutates: &["brew.version"] },
+            Entry { target: "<name>", verb: "set",    handler: "update_package",     mutates: &["brew.version"] },
         ],
         "process" => &[
             Entry { target: "<pid>",          verb: "kill",   handler: "kill_graceful",  mutates: &["process.processes"] },

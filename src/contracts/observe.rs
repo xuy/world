@@ -10,7 +10,7 @@ pub enum ObserveDomain {
     Process,
     Disk,
     Printer,
-    Package,
+    Brew,
     Log,
     Container,
 }
@@ -24,7 +24,7 @@ impl ObserveDomain {
             Self::Process => "process",
             Self::Disk => "disk",
             Self::Printer => "printer",
-            Self::Package => "package",
+            Self::Brew => "brew",
             Self::Log => "log",
             Self::Container => "container",
         }

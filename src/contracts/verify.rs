@@ -10,7 +10,7 @@ pub enum VerifyCheck {
     HostReachable,
     DnsResolves,
     PrinterPrints,
-    PackageInstalled,
+    BrewInstalled,
     DiskWritable,
     InternetReachable,
     ProcessRunning,
@@ -30,7 +30,7 @@ impl VerifyCheck {
             Self::HostReachable => "host_reachable",
             Self::DnsResolves => "dns_resolves",
             Self::PrinterPrints => "printer_prints",
-            Self::PackageInstalled => "package_installed",
+            Self::BrewInstalled => "brew_installed",
             Self::DiskWritable => "disk_writable",
             Self::InternetReachable => "internet_reachable",
             Self::ProcessRunning => "process_running",
@@ -68,7 +68,7 @@ pub fn recommended_verifications(action: &str) -> &'static [&'static str] {
             &["internet_reachable"]
         }
         "clear_queue" | "restart_spooler" => &["printer_prints"],
-        "repair_package" | "install_package" | "update_package" => &["package_installed"],
+        "repair_package" | "install_package" | "update_package" => &["brew_installed"],
         "clear_temp_files" | "remove_large_known_caches" => &["disk_writable"],
         "kill_graceful" => &["process_stopped"],
         "kill_force" => &["process_stopped", "port_free"],

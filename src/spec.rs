@@ -108,8 +108,8 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
             ]
         }),
 
-        ObserveDomain::Package => json!({
-            "domain": "package",
+        ObserveDomain::Brew => json!({
+            "domain": "brew",
             "observations": {
                 "name": "string",
                 "installed": "bool",
@@ -118,10 +118,10 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                 "source": "string | null"
             },
             "actions": [
-                { "target": "<name>", "verbs": ["add"],    "mutates": ["package.installed", "package.version"],  "description": "Install a package" },
-                { "target": "<name>", "verbs": ["remove"], "mutates": ["package.installed"],                      "description": "Uninstall a package" },
-                { "target": "<name>", "verbs": ["reset"],  "mutates": ["package.version"],                        "description": "Repair (reinstall) a package" },
-                { "target": "<name>", "verbs": ["set"],    "mutates": ["package.version"],                        "description": "Set version", "args": { "version": { "type": "string", "description": "version string or 'latest'" } } }
+                { "target": "<name>", "verbs": ["add"],    "mutates": ["brew.installed", "brew.version"],  "description": "Install a package" },
+                { "target": "<name>", "verbs": ["remove"], "mutates": ["brew.installed"],                   "description": "Uninstall a package" },
+                { "target": "<name>", "verbs": ["reset"],  "mutates": ["brew.version"],                     "description": "Repair (reinstall) a package" },
+                { "target": "<name>", "verbs": ["set"],    "mutates": ["brew.version"],                     "description": "Set version", "args": { "version": { "type": "string", "description": "version string or 'latest'" } } }
             ]
         }),
 
@@ -229,7 +229,7 @@ pub const SPEC_DOMAINS: &[ObserveDomain] = &[
     ObserveDomain::Service,
     ObserveDomain::Disk,
     ObserveDomain::Printer,
-    ObserveDomain::Package,
+    ObserveDomain::Brew,
     ObserveDomain::Log,
     ObserveDomain::Process,
     ObserveDomain::Container,

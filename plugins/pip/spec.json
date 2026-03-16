@@ -12,12 +12,14 @@
     },
     "python_version": "string",
     "pip_version": "string",
-    "virtualenv": "string | null"
+    "virtualenv": "string | null",
+    "installed": "bool",
+    "version": "string | null"
   },
   "actions": [
-    { "target": "<name>", "verbs": ["add"],    "description": "Install a pip package",            "mutates": ["package.installed", "package.version"] },
-    { "target": "<name>", "verbs": ["remove"], "description": "Uninstall a pip package",          "mutates": ["package.installed"] },
-    { "target": "<name>", "verbs": ["set"],    "description": "Pin to a version",                 "mutates": ["package.version"], "args": { "version": { "type": "string" } } },
-    { "target": "all",    "verbs": ["set"],    "description": "Upgrade all outdated packages",    "mutates": ["package.installed", "package.version"], "args": { "version": { "type": "string", "enum": ["latest"] } } }
+    { "target": "<name>", "verbs": ["add"],    "description": "Install a pip package",            "mutates": ["pip.installed", "pip.version"] },
+    { "target": "<name>", "verbs": ["remove"], "description": "Uninstall a pip package",          "mutates": ["pip.installed"] },
+    { "target": "<name>", "verbs": ["set"],    "description": "Pin to a version",                 "mutates": ["pip.version"], "args": { "version": { "type": "string" } } },
+    { "target": "all",    "verbs": ["set"],    "description": "Upgrade all outdated packages",    "mutates": ["pip.installed", "pip.version"], "args": { "version": { "type": "string", "enum": ["latest"] } } }
   ]
 }
