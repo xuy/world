@@ -12,18 +12,21 @@ use crate::adapters::Platform;
 use crate::{dispatch, spec};
 use crate::contracts::observe::ObserveDomain;
 use crate::contracts::act::ActDomain;
-use crate::contracts::{Risk, UnifiedResult};
+use crate::contracts::UnifiedResult;
 use crate::domains;
 use crate::policy;
 
 // ─── Core types ──────────────────────────────────────────────────────────────
 
-/// A dispatch entry: target pattern + verb → handler name.
+/// A dispatch entry: target pattern + verb → handler name + mutates metadata.
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct DispatchEntry {
     pub target: String,
     pub verb: String,
     pub handler: String,
+    /// Observation schema paths this action mutates (e.g. ["network.interfaces"]).
+    #[serde(default)]
+    pub mutates: Vec<String>,
 }
 
 /// The unified plugin interface.
@@ -41,9 +44,6 @@ pub trait DomainPlugin: Send + Sync {
 
     /// Dispatch table: (target_pattern, verb) → handler.
     fn dispatch_entries(&self) -> &[DispatchEntry];
-
-    /// Risk classification for a handler.
-    fn classify_risk(&self, handler: &str) -> Risk;
 
     /// Whether a handler is in the allowlist.
     fn is_allowed(&self, handler: &str) -> bool;
@@ -127,6 +127,7 @@ impl NativePlugin {
                 target: e.target.to_string(),
                 verb: e.verb.to_string(),
                 handler: e.handler.to_string(),
+                mutates: e.mutates.iter().map(|s| s.to_string()).collect(),
             })
             .collect();
 
@@ -153,13 +154,6 @@ impl DomainPlugin for NativePlugin {
 
     fn dispatch_entries(&self) -> &[DispatchEntry] {
         &self.entries
-    }
-
-    fn classify_risk(&self, handler: &str) -> Risk {
-        match self.act_domain {
-            Some(rd) => policy::classify_risk(rd, handler),
-            None => Risk::Low,
-        }
     }
 
     fn is_allowed(&self, handler: &str) -> bool {
@@ -232,9 +226,9 @@ pub fn native_plugins(platform: Platform) -> Vec<Box<dyn DomainPlugin>> {
             platform,
         )),
         Box::new(NativePlugin::new(
-            "package",
-            ObserveDomain::Package,
-            Some(ActDomain::Package),
+            "brew",
+            ObserveDomain::Brew,
+            Some(ActDomain::Brew),
             platform,
         )),
         Box::new(NativePlugin::new(

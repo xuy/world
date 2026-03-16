@@ -3,7 +3,7 @@ use serde_json::json;
 
 use crate::contracts::{Risk, UnifiedResult};
 use crate::execution::{exec, ExecOpts};
-use crate::schemas::PackageState;
+use crate::schemas::BrewPackageState;
 
 pub async fn observe(
     target: Option<&str>,
@@ -22,13 +22,13 @@ pub async fn observe(
     if let Some("all") = target {
         // Fall through to list — but without truncation
         let result = exec("brew", &["list", "--versions"], ExecOpts::default()).await?;
-        let packages: Vec<PackageState> = result
+        let packages: Vec<BrewPackageState> = result
             .stdout
             .lines()
             .filter_map(|line| {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 2 {
-                    Some(PackageState {
+                    Some(BrewPackageState {
                         name: parts[0].to_string(),
                         installed: true,
                         version: Some(parts[1].to_string()),
@@ -63,7 +63,7 @@ pub async fn observe(
         } else {
             return Ok(UnifiedResult::ok(
                 format!("Package '{name}' not found in Homebrew."),
-                serde_json::to_value(&PackageState {
+                serde_json::to_value(&BrewPackageState {
                     name: name.to_string(),
                     installed: false,
                     version: None,
@@ -77,13 +77,13 @@ pub async fn observe(
     // List installed packages, most recently installed first (by modification time)
     // brew list --versions gives alphabetical; use ls -t on the cellar for recency
     let result = exec("brew", &["list", "--versions"], ExecOpts::default()).await?;
-    let mut packages: Vec<PackageState> = result
+    let mut packages: Vec<BrewPackageState> = result
         .stdout
         .lines()
         .filter_map(|line| {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 2 {
-                Some(PackageState {
+                Some(BrewPackageState {
                     name: parts[0].to_string(),
                     installed: true,
                     version: Some(parts[1].to_string()),
@@ -236,7 +236,7 @@ pub async fn verify_installed(name: &str) -> Result<UnifiedResult> {
     ))
 }
 
-fn parse_brew_info(info: &serde_json::Value, name: &str) -> PackageState {
+fn parse_brew_info(info: &serde_json::Value, name: &str) -> BrewPackageState {
     let formulae = info.get("formulae").and_then(|f| f.as_array());
     if let Some(formulae) = formulae {
         if let Some(formula) = formulae.first() {
@@ -258,7 +258,7 @@ fn parse_brew_info(info: &serde_json::Value, name: &str) -> PackageState {
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
 
-            return PackageState {
+            return BrewPackageState {
                 name: name.to_string(),
                 installed,
                 version,
@@ -268,7 +268,7 @@ fn parse_brew_info(info: &serde_json::Value, name: &str) -> PackageState {
         }
     }
 
-    PackageState {
+    BrewPackageState {
         name: name.to_string(),
         installed: false,
         version: None,

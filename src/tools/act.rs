@@ -38,7 +38,7 @@ impl Tool for ActTool {
             "properties": {
                 "domain": {
                     "type": "string",
-                    "enum": ["network", "service", "printer", "disk", "package", "process", "container"],
+                    "enum": ["network", "service", "printer", "disk", "brew", "process", "container"],
                     "description": "The domain to act on."
                 },
                 "action": {
@@ -124,7 +124,7 @@ impl Tool for ActTool {
         event.target = args.target;
         event.duration_ms = duration_ms;
         event.success = result.error.is_none();
-        event.risk = result.risk;
+        
         self.telemetry.record(event);
 
         // Add recommended verifications to suggestions

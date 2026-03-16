@@ -20,7 +20,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::contracts::{Risk, UnifiedResult};
+use crate::contracts::UnifiedResult;
 use crate::plugin::{DispatchEntry, DomainPlugin};
 
 /// A loaded external plugin.
@@ -29,15 +29,12 @@ pub struct Plugin {
     pub domain: String,
     pub spec: Value,
     pub entries: Vec<DispatchEntry>,
-    pub policy: std::collections::HashMap<String, Risk>,
     pub handler_path: PathBuf,
 }
 
 #[derive(Debug, Deserialize)]
 struct DispatchFile {
     entries: Vec<DispatchEntry>,
-    #[serde(default)]
-    policy: std::collections::HashMap<String, String>,
 }
 
 impl Plugin {
@@ -56,20 +53,6 @@ impl Plugin {
         let dispatch_file: DispatchFile =
             serde_json::from_str(&std::fs::read_to_string(&dispatch_path)?)?;
 
-        // Convert policy strings to Risk
-        let policy = dispatch_file
-            .policy
-            .into_iter()
-            .map(|(handler, risk_str)| {
-                let risk = match risk_str.as_str() {
-                    "low" => Risk::Low,
-                    "high" => Risk::High,
-                    _ => Risk::Medium,
-                };
-                (handler, risk)
-            })
-            .collect();
-
         // Find handler executable
         let handler_path = find_handler(dir)?;
 
@@ -77,7 +60,6 @@ impl Plugin {
             domain,
             spec,
             entries: dispatch_file.entries,
-            policy,
             handler_path,
         })
     }
@@ -119,6 +101,11 @@ impl Plugin {
         let (program, args) = if self.handler_path.extension().map_or(false, |e| e == "py") {
             (
                 "python3".to_string(),
+                vec![self.handler_path.to_string_lossy().to_string()],
+            )
+        } else if self.handler_path.extension().map_or(false, |e| e == "js") {
+            (
+                "node".to_string(),
                 vec![self.handler_path.to_string_lossy().to_string()],
             )
         } else if self.handler_path.extension().map_or(false, |e| e == "sh") {
@@ -192,10 +179,6 @@ impl DomainPlugin for Plugin {
         &self.entries
     }
 
-    fn classify_risk(&self, handler: &str) -> Risk {
-        self.policy.get(handler).copied().unwrap_or(Risk::Medium)
-    }
-
     fn is_allowed(&self, _handler: &str) -> bool {
         // External plugins manage their own allowlists
         true
@@ -225,14 +208,14 @@ impl DomainPlugin for Plugin {
 
 /// Find the handler executable in a plugin directory.
 fn find_handler(dir: &Path) -> Result<PathBuf> {
-    for candidate in &["handler.py", "handler.sh", "handler"] {
+    for candidate in &["handler.py", "handler.js", "handler.sh", "handler"] {
         let path = dir.join(candidate);
         if path.exists() {
             return Ok(path);
         }
     }
     Err(anyhow::anyhow!(
-        "No handler found in {}. Expected handler.py, handler.sh, or handler",
+        "No handler found in {}. Expected handler.py, handler.js, handler.sh, or handler",
         dir.display()
     ))
 }

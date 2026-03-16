@@ -123,9 +123,9 @@ pub struct MountPoint {
     pub percent_used: f32,
 }
 
-/// Normalized package state.
+/// Normalized brew package state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PackageState {
+pub struct BrewPackageState {
     pub name: String,
     pub installed: bool,
     #[serde(skip_serializing_if = "Option::is_none")]

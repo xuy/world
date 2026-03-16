@@ -12,6 +12,7 @@
 
 pub mod adapters;
 pub mod awaiting;
+pub mod ceiling;
 pub mod cli;
 pub mod contracts;
 pub mod dispatch;

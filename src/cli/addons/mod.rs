@@ -13,7 +13,6 @@
 //!   1. A spec fragment per domain (what it adds to the world)
 //!   2. Optionally, CLI commands or middleware behavior
 
-pub mod policy;
 pub mod verify;
 
 use serde_json::Value;
@@ -42,8 +41,6 @@ pub trait Addon: Send + Sync {
 pub enum AddonKind {
     /// Stored predicates — functions from observation to bool.
     Predicate,
-    /// Governance — gates and classifies transitions.
-    Governance,
     /// Instrumentation — observes the agent's own behavior.
     Instrumentation,
 }
@@ -52,6 +49,5 @@ pub enum AddonKind {
 pub fn registered() -> Vec<Box<dyn Addon>> {
     vec![
         Box::new(verify::VerifyAddon),
-        Box::new(policy::PolicyAddon),
     ]
 }

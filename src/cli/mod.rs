@@ -15,7 +15,6 @@ use crate::contracts::UnifiedResult;
 use crate::plugin::PluginRegistry;
 use crate::telemetry::{TelemetryLog, ToolCallEvent};
 
-use confirm::confirm_high_risk;
 use output::{format_result, format_spec, format_tools, OutputMode};
 
 // ─── CLI definition ─────────────────────────────────────────────────────────
@@ -72,9 +71,6 @@ pub enum Command {
         /// Preview without executing
         #[arg(long)]
         dry_run: bool,
-        /// Skip confirmation for high-risk actions
-        #[arg(long)]
-        yes: bool,
     },
 
     /// Show domain spec — observations + actions
@@ -225,10 +221,9 @@ pub async fn run(cli: Cli) -> ExitCode {
             verb,
             args,
             dry_run,
-            yes,
         } => {
             run_act(
-                &registry, &telemetry, mode, &domain, &target, &verb, &args, dry_run, yes,
+                &registry, &telemetry, mode, &domain, &target, &verb, &args, dry_run,
             )
             .await
         }
@@ -313,7 +308,6 @@ async fn run_observe(
             event.target = target;
             event.duration_ms = duration_ms;
             event.success = r.error.is_none();
-            event.risk = r.risk;
             telemetry.record(event);
 
             let has_error = r.error.is_some();
@@ -341,7 +335,6 @@ async fn run_act(
     verb: &str,
     args: &[String],
     dry_run: bool,
-    yes: bool,
 ) -> ExitCode {
     let plugin = match registry.get(domain_str) {
         Some(p) => p,
@@ -375,12 +368,17 @@ async fn run_act(
         return ExitCode::from(1);
     }
 
-    // Risk classification + consent gate
-    let risk = plugin.classify_risk(&resolved.handler);
-    if !dry_run && risk.requires_consent() && !yes {
-        if !confirm_high_risk(mode, domain_str, target, verb) {
-            return ExitCode::from(4);
-        }
+    // Capability ceiling check — structural, cannot be overridden
+    if let Err(blocked_tag) = crate::ceiling::check(&resolved.mutates) {
+        let result = UnifiedResult::err(
+            "exceeds_capability",
+            format!(
+                "Action '{} {} {}' mutates '{}' which exceeds this binary's capability ceiling.",
+                domain_str, target, verb, blocked_tag
+            ),
+        );
+        format_result(mode, &result);
+        return ExitCode::from(1);
     }
 
     let start = Instant::now();
@@ -404,7 +402,6 @@ async fn run_act(
             event.target = resolved.target;
             event.duration_ms = duration_ms;
             event.success = r.error.is_none();
-            event.risk = r.risk;
             telemetry.record(event);
 
             let has_error = r.error.is_some();

@@ -93,12 +93,12 @@ impl Addon for VerifyAddon {
                 }
             ]),
 
-            ObserveDomain::Package => json!([
+            ObserveDomain::Brew => json!([
                 {
-                    "name": "package_installed",
+                    "name": "brew_installed",
                     "params": { "target": { "type": "string", "description": "package name" } },
-                    "observes": "package.installed",
-                    "asserts": "package exists in package manager",
+                    "observes": "brew.installed",
+                    "asserts": "package exists in brew",
                     "returns": { "passed": "bool", "version": "string | null" }
                 }
             ]),

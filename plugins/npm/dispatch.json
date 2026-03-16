@@ -1,0 +1,8 @@
+{
+  "entries": [
+    { "target": "<name>", "verb": "add",    "handler": "install",     "mutates": ["npm.installed", "npm.version"] },
+    { "target": "<name>", "verb": "remove", "handler": "uninstall",   "mutates": ["npm.installed"] },
+    { "target": "<name>", "verb": "set",    "handler": "pin_version", "mutates": ["npm.version"] },
+    { "target": "all",    "verb": "set",    "handler": "update_all",  "mutates": ["npm.installed", "npm.version"] }
+  ]
+}

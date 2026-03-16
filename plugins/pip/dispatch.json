@@ -1,14 +1,8 @@
 {
   "entries": [
-    { "target": "<name>", "verb": "add",    "handler": "install" },
-    { "target": "<name>", "verb": "remove", "handler": "uninstall" },
-    { "target": "<name>", "verb": "set",    "handler": "pin_version" },
-    { "target": "all",    "verb": "set",    "handler": "upgrade_all" }
-  ],
-  "policy": {
-    "install":     "medium",
-    "uninstall":   "high",
-    "pin_version": "medium",
-    "upgrade_all": "high"
-  }
+    { "target": "<name>", "verb": "add",    "handler": "install",     "mutates": ["pip.installed", "pip.version"] },
+    { "target": "<name>", "verb": "remove", "handler": "uninstall",   "mutates": ["pip.installed"] },
+    { "target": "<name>", "verb": "set",    "handler": "pin_version", "mutates": ["pip.version"] },
+    { "target": "all",    "verb": "set",    "handler": "upgrade_all", "mutates": ["pip.installed", "pip.version"] }
+  ]
 }

@@ -38,7 +38,7 @@ impl Addon for PolicyAddon {
             ObserveDomain::Service => ActDomain::Service,
             ObserveDomain::Disk => ActDomain::Disk,
             ObserveDomain::Printer => ActDomain::Printer,
-            ObserveDomain::Package => ActDomain::Package,
+            ObserveDomain::Brew => ActDomain::Brew,
             _ => return None,
         };
 

@@ -387,36 +387,6 @@ fn print_addon_spec_inline(name: &str, spec: &serde_json::Value) {
                 }
             }
         }
-        "policy" => {
-            if let Some(rules) = spec.get("rules").and_then(|r| r.as_array()) {
-                for rule in rules {
-                    let target = rule["target"].as_str().unwrap_or("?");
-                    let verb = rule["verb"].as_str().unwrap_or("?");
-                    let class = rule["classification"].as_str().unwrap_or("?");
-                    let consent = rule
-                        .get("requires_consent")
-                        .and_then(|c| c.as_bool())
-                        .unwrap_or(false);
-                    let badge = match class {
-                        "low" => class.green(),
-                        "medium" => class.yellow(),
-                        "high" => class.red(),
-                        _ => class.normal(),
-                    };
-                    let label = format!("{target} {verb}");
-                    if consent {
-                        println!(
-                            "      {} {} {}",
-                            label.white(),
-                            badge,
-                            "(requires --yes)".dimmed()
-                        );
-                    } else {
-                        println!("      {} {}", label.white(), badge);
-                    }
-                }
-            }
-        }
         _ => {
             if let Some(obj) = spec.as_object() {
                 for (k, v) in obj {

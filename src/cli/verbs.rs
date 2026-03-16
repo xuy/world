@@ -8,7 +8,7 @@
 //!
 //! Verb arguments use key=value syntax:
 //!   world act service nginx.startup_mode set mode=auto
-//!   world act package jq set version=latest
+//!   world act brew jq set version=latest
 
 use std::collections::BTreeMap;
 
@@ -22,6 +22,8 @@ pub struct ResolvedAction {
     pub handler: String,
     pub target: Option<String>,
     pub params: Option<Value>,
+    /// Observation schema paths this action mutates.
+    pub mutates: Vec<String>,
 }
 
 /// Parse verb arguments as key=value pairs.
@@ -88,6 +90,7 @@ pub fn resolve(
                 handler: entry.handler.clone(),
                 target: extracted,
                 params,
+                mutates: entry.mutates.clone(),
             });
         }
     }
@@ -172,6 +175,7 @@ mod tests {
                 target: e.target.to_string(),
                 verb: e.verb.to_string(),
                 handler: e.handler.to_string(),
+                mutates: e.mutates.iter().map(|s| s.to_string()).collect(),
             })
             .collect()
     }
@@ -260,9 +264,9 @@ mod tests {
         assert_eq!(r.handler, "restart_service");
         assert_eq!(r.target.as_deref(), Some("nginx"));
 
-        // Package jq add
-        let entries = entries_for("package");
-        let r = resolve("package", &entries, "jq", "add", &[]).unwrap();
+        // Brew jq add
+        let entries = entries_for("brew");
+        let r = resolve("brew", &entries, "jq", "add", &[]).unwrap();
         assert_eq!(r.handler, "install_package");
         assert_eq!(r.target.as_deref(), Some("jq"));
 

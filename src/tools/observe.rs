@@ -37,7 +37,7 @@ impl Tool for ObserveTool {
             "properties": {
                 "domain": {
                     "type": "string",
-                    "enum": ["system", "network", "service", "process", "disk", "printer", "package", "log", "container"],
+                    "enum": ["system", "network", "service", "process", "disk", "printer", "brew", "log", "container"],
                     "description": "The system domain to observe."
                 },
                 "target": {
@@ -89,7 +89,7 @@ impl Tool for ObserveTool {
         event.target = args.target;
         event.duration_ms = duration_ms;
         event.success = result.error.is_none();
-        event.risk = result.risk;
+        
         self.telemetry.record(event);
 
         let data = serde_json::to_value(&result)?;
