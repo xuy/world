@@ -30,6 +30,15 @@ The combination means you can hand an agent a world binary and reason about what
 
 A domain is a slice of the world that can be observed and acted on. Built-in domains cover macOS system state — processes, networks, containers, services, disks, printers, logs. External plugins extend this to package managers (brew, pip, npm) and anything else with state and actions.
 
+### spec
+
+Every domain declares its schema — what can be observed, what actions exist, what each action mutates. Agents use this for discovery instead of guessing.
+
+```bash
+world spec              # all domains
+world spec network      # one domain
+```
+
 ### observe → act → await
 
 ```bash
@@ -54,15 +63,6 @@ world sample process top_cpu --limit 5 --count 5 --interval 2s
 ```
 
 Fields that vary become `{mean, min, max, delta, rate_per_sec}`. Constant fields stay as scalars.
-
-### spec
-
-Every domain declares its schema — what can be observed, what actions exist, what each action mutates. Agents use this for discovery instead of guessing.
-
-```bash
-world spec              # all domains
-world spec network      # one domain
-```
 
 ## Domains
 
