@@ -9,23 +9,19 @@ The motivation is simple: agents that manage real systems — diagnosing why a s
 This project grew out of [Noah](https://github.com/xuy/noah), an AI IT department for small businesses, where the agent needs to observe and manage machines on behalf of non-technical users.
 
 ```mermaid
-graph TB
+graph LR
     System["<b>System</b><br/><i>(partially observable)</i>"]
+    Domains["<b>Domains</b>"]
+    Agent(["<b>AI Agent</b><br/>world model / belief"])
 
-    System --- Domains["<b>Domains</b>"]
-
-    Spec["<b>spec</b><br/>schema per domain"] <--> Domains
-
+    System --- Domains
     Domains -- "observe" --> Agent
     Agent -- "act" --> Domains
     Domains -. "await" .-> Domains
-
-    subgraph Agent ["AI Agent"]
-        WorldModel(["world model / belief"])
-    end
+    Agent -- "spec" --> Domains
 ```
 
-The agent builds a world model from structured observations. It changes state through declared verbs (`act`), and waits for conditions (`await`) instead of polling. `spec` describes every domain's schema — what can be observed, what actions exist, what each action mutates — so the agent discovers capabilities rather than guessing.
+The system is partially observable — agents cannot see everything, only what domains expose. Each domain declares a schema (`spec`) describing its observations, actions, and what each action mutates. The agent builds a world model from structured observations, changes state through declared verbs (`act`), and waits for conditions (`await`) instead of polling.
 
 ## Why not just shell commands?
 
