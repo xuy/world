@@ -56,13 +56,16 @@ pub enum Command {
     },
 
     /// Act on the world — finite verbs on schema paths (A)
+    ///
+    /// For targeted actions:  world act DOMAIN TARGET VERB [ARGS...]
+    /// For session actions:   world act DOMAIN VERB [ARGS...]
     Act {
         /// Domain (network, service, disk, ... or any plugin)
         domain: String,
-        /// Target path (e.g. dns_cache, interfaces.en0, nginx, requests)
+        /// Target path or verb (for targetless session actions)
         target: String,
-        /// Verb (reset, set, add, remove, restart, enable, disable, clear)
-        verb: String,
+        /// Verb (or first arg if target is the verb)
+        verb: Option<String>,
         /// Verb arguments as key=value pairs (e.g. mode=auto, version=latest)
         #[arg(num_args = 0..)]
         args: Vec<String>,
@@ -223,7 +226,7 @@ pub async fn run(cli: Cli) -> ExitCode {
             dry_run,
         } => {
             run_act(
-                &registry, &telemetry, mode, &domain, &target, &verb, &args, dry_run,
+                &registry, &telemetry, mode, &domain, &target, verb.as_deref(), &args, dry_run,
             )
             .await
         }
@@ -332,7 +335,7 @@ async fn run_act(
     mode: OutputMode,
     domain_str: &str,
     target: &str,
-    verb: &str,
+    verb: Option<&str>,
     args: &[String],
     dry_run: bool,
 ) -> ExitCode {
@@ -345,13 +348,46 @@ async fn run_act(
         }
     };
 
-    // Resolve verb via plugin's dispatch table
-    let resolved = match verbs::resolve(domain_str, plugin.dispatch_entries(), target, verb, args) {
-        Ok(r) => r,
-        Err(msg) => {
-            let result = UnifiedResult::err("invalid_action", msg);
-            format_result(mode, &result);
-            return ExitCode::from(1);
+    // Resolve verb via plugin's dispatch table.
+    //
+    // Two forms:
+    //   world act DOMAIN TARGET VERB [ARGS...]   → targeted action
+    //   world act DOMAIN VERB [ARGS...]          → targetless (session) action
+    //
+    // When verb is None, the "target" positional IS the verb (targetless form).
+    // When verb is Some, try targeted first, fall back to targetless.
+    let resolved = if let Some(verb) = verb {
+        // Try targeted first: target + verb as given
+        match verbs::resolve(domain_str, plugin.dispatch_entries(), target, verb, args) {
+            Ok(r) => r,
+            Err(_) => {
+                // Fall back to targetless: "target" is the verb, "verb" is the first arg
+                let mut shifted_args: Vec<String> = vec![verb.to_string()];
+                shifted_args.extend_from_slice(args);
+                match verbs::resolve(domain_str, plugin.dispatch_entries(), "", target, &shifted_args) {
+                    Ok(r) => r,
+                    Err(_) => {
+                        // Neither worked — show original error
+                        let result = UnifiedResult::err(
+                            "invalid_action",
+                            verbs::resolve(domain_str, plugin.dispatch_entries(), target, verb, args)
+                                .unwrap_err(),
+                        );
+                        format_result(mode, &result);
+                        return ExitCode::from(1);
+                    }
+                }
+            }
+        }
+    } else {
+        // No verb given — target IS the verb (targetless session action)
+        match verbs::resolve(domain_str, plugin.dispatch_entries(), "", target, args) {
+            Ok(r) => r,
+            Err(msg) => {
+                let result = UnifiedResult::err("invalid_action", msg);
+                format_result(mode, &result);
+                return ExitCode::from(1);
+            }
         }
     };
 
@@ -373,8 +409,11 @@ async fn run_act(
         let result = UnifiedResult::err(
             "exceeds_capability",
             format!(
-                "Action '{} {} {}' mutates '{}' which exceeds this binary's capability ceiling.",
-                domain_str, target, verb, blocked_tag
+                "Action '{} {}{}' mutates '{}' which exceeds this binary's capability ceiling.",
+                domain_str,
+                if verb.is_some() { format!("{target} ") } else { String::new() },
+                verb.unwrap_or(target),
+                blocked_tag
             ),
         );
         format_result(mode, &result);
@@ -398,7 +437,10 @@ async fn run_act(
         Ok(r) => {
             let mut event = ToolCallEvent::new("act");
             event.domain = Some(domain_str.to_string());
-            event.action = Some(format!("{target} {verb}"));
+            event.action = Some(match verb {
+                Some(v) => format!("{target} {v}"),
+                None => target.to_string(),
+            });
             event.target = resolved.target;
             event.duration_ms = duration_ms;
             event.success = r.error.is_none();

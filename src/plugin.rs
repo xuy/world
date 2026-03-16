@@ -27,6 +27,10 @@ pub struct DispatchEntry {
     /// Observation schema paths this action mutates (e.g. ["network.interfaces"]).
     #[serde(default)]
     pub mutates: Vec<String>,
+    /// Default arg key — bare positional values map to this key.
+    /// e.g. "url" means `world act browser open https://...` → `url=https://...`
+    #[serde(default)]
+    pub default_arg: Option<String>,
 }
 
 /// The unified plugin interface.
@@ -128,6 +132,7 @@ impl NativePlugin {
                 verb: e.verb.to_string(),
                 handler: e.handler.to_string(),
                 mutates: e.mutates.iter().map(|s| s.to_string()).collect(),
+                default_arg: e.default_arg.map(|s| s.to_string()),
             })
             .collect();
 

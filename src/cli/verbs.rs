@@ -27,7 +27,10 @@ pub struct ResolvedAction {
 }
 
 /// Parse verb arguments as key=value pairs.
-fn parse_args(args: &[String]) -> Result<BTreeMap<String, String>, String> {
+/// If `default_key` is provided, bare positional values (without `key=`) are
+/// assigned to that key. This lets actions declare a default arg so users can
+/// write `world act browser open https://...` instead of `url=https://...`.
+fn parse_args(args: &[String], default_key: Option<&str>) -> Result<BTreeMap<String, String>, String> {
     let mut map = BTreeMap::new();
     for arg in args {
         if arg.starts_with("--") {
@@ -38,6 +41,13 @@ fn parse_args(args: &[String]) -> Result<BTreeMap<String, String>, String> {
                 return Err(format!("Invalid argument: '{arg}'. Use key=value syntax."));
             }
             map.insert(key.to_string(), value.to_string());
+        } else if let Some(key) = default_key {
+            if map.contains_key(key) {
+                return Err(format!(
+                    "Multiple bare values for default arg '{key}'. Use key=value syntax for additional args."
+                ));
+            }
+            map.insert(key.to_string(), arg.to_string());
         } else {
             return Err(format!(
                 "Invalid argument: '{arg}'. Verb arguments must be key=value pairs (e.g. mode=auto, version=latest)."
@@ -58,11 +68,8 @@ pub fn resolve(
     verb: &str,
     args: &[String],
 ) -> Result<ResolvedAction, String> {
-    // Parse verb arguments as key=value pairs
-    let kv_args = parse_args(args)?;
-
     // Validate: `set` requires at least one key=value
-    if verb == "set" && kv_args.is_empty() {
+    if verb == "set" && args.is_empty() {
         return Err(
             "Verb 'set' requires key=value arguments (e.g. set mode=auto, set version=latest)."
                 .into(),
@@ -76,6 +83,9 @@ pub fn resolve(
         }
 
         if let Some(extracted) = match_target(&entry.target, target) {
+            // Parse args with the entry's default_arg for bare positional values
+            let kv_args = parse_args(args, entry.default_arg.as_deref())?;
+
             let params = if kv_args.is_empty() {
                 None
             } else {
@@ -124,6 +134,11 @@ pub fn resolve(
 ///   "interfaces.<name>"      — prefix match, returns Some(suffix)
 ///   "<name>.queue"           — suffix match, returns Some(prefix)
 fn match_target(pattern: &str, target: &str) -> Option<Option<String>> {
+    // Empty pattern matches empty target (for targetless/session actions)
+    if pattern.is_empty() && target.is_empty() {
+        return Some(None);
+    }
+
     // Exact match (no wildcards)
     if !pattern.contains('<') {
         if pattern == target {
@@ -176,6 +191,7 @@ mod tests {
                 verb: e.verb.to_string(),
                 handler: e.handler.to_string(),
                 mutates: e.mutates.iter().map(|s| s.to_string()).collect(),
+                default_arg: e.default_arg.map(|s| s.to_string()),
             })
             .collect()
     }
@@ -223,14 +239,14 @@ mod tests {
     #[test]
     fn test_parse_args_valid() {
         let args = vec!["mode=auto".to_string()];
-        let kv = parse_args(&args).unwrap();
+        let kv = parse_args(&args, None).unwrap();
         assert_eq!(kv.get("mode").unwrap(), "auto");
     }
 
     #[test]
     fn test_parse_args_multiple() {
         let args = vec!["version=1.2.3".to_string(), "source=npm".to_string()];
-        let kv = parse_args(&args).unwrap();
+        let kv = parse_args(&args, None).unwrap();
         assert_eq!(kv.get("version").unwrap(), "1.2.3");
         assert_eq!(kv.get("source").unwrap(), "npm");
     }
@@ -238,7 +254,7 @@ mod tests {
     #[test]
     fn test_parse_args_naked_value_rejected() {
         let args = vec!["latest".to_string()];
-        assert!(parse_args(&args).is_err());
+        assert!(parse_args(&args, None).is_err());
     }
 
     #[test]
