@@ -103,6 +103,11 @@ impl Plugin {
                 "python3".to_string(),
                 vec![self.handler_path.to_string_lossy().to_string()],
             )
+        } else if self.handler_path.extension().map_or(false, |e| e == "js") {
+            (
+                "node".to_string(),
+                vec![self.handler_path.to_string_lossy().to_string()],
+            )
         } else if self.handler_path.extension().map_or(false, |e| e == "sh") {
             (
                 "sh".to_string(),
@@ -203,14 +208,14 @@ impl DomainPlugin for Plugin {
 
 /// Find the handler executable in a plugin directory.
 fn find_handler(dir: &Path) -> Result<PathBuf> {
-    for candidate in &["handler.py", "handler.sh", "handler"] {
+    for candidate in &["handler.py", "handler.js", "handler.sh", "handler"] {
         let path = dir.join(candidate);
         if path.exists() {
             return Ok(path);
         }
     }
     Err(anyhow::anyhow!(
-        "No handler found in {}. Expected handler.py, handler.sh, or handler",
+        "No handler found in {}. Expected handler.py, handler.js, handler.sh, or handler",
         dir.display()
     ))
 }
