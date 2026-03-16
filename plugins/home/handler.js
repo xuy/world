@@ -81,7 +81,7 @@ function slugify(name) {
 
 function isLightLike(entityId, attrs) {
   const domain = entityId.split(".")[0];
-  if (domain === "light") return true;
+  if (domain === "light" || domain === "switch") return true;
   if (domain === "input_boolean") {
     const icon = attrs.icon || "";
     const name = (attrs.friendly_name || "").toLowerCase();
