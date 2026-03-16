@@ -108,8 +108,108 @@ _world_observe_targets() {
   esac
 }
 
+# ─── Per-subcommand completions ───────────────────────────────────────────────
+
+_world_complete_observe() {
+  case $CURRENT in
+    2)
+      local -a doms=($(_world_domains))
+      _describe -t domains 'domain' doms
+      ;;
+    3)
+      local domain="${line[1]}"
+      local -a targets=($(_world_observe_targets "$domain"))
+      if (( ${#targets} )); then
+        _describe -t targets 'target' targets
+      fi
+      ;;
+  esac
+  _arguments \
+    '--since=[Time filter]:since:' \
+    '--limit=[Max results]:limit:' \
+    '--json[Force JSON]' \
+    '--pretty[Human-readable]'
+}
+
+_world_complete_act() {
+  case $CURRENT in
+    2)
+      local -a doms=($(_world_domains))
+      _describe -t domains 'domain' doms
+      ;;
+    3|4)
+      local domain="${line[1]}"
+      local -a verbs=($(_world_verbs "$domain"))
+      if (( ${#verbs} )); then
+        _describe -t verbs 'verb' verbs
+      fi
+      ;;
+  esac
+  _arguments \
+    '--dry-run[Preview without executing]' \
+    '--json[Force JSON]' \
+    '--pretty[Human-readable]'
+}
+
+_world_complete_await() {
+  case $CURRENT in
+    2)
+      local -a doms=($(_world_domains))
+      _describe -t domains 'domain' doms
+      ;;
+    3|4)
+      local domain="${line[1]}"
+      local -a conds=($(_world_conditions "$domain"))
+      if (( ${#conds} )); then
+        _describe -t conditions 'condition' conds
+      fi
+      ;;
+  esac
+  _arguments \
+    '--timeout=[Max seconds]:timeout:' \
+    '--json[Force JSON]' \
+    '--pretty[Human-readable]'
+}
+
+_world_complete_sample() {
+  case $CURRENT in
+    2)
+      local -a doms=($(_world_domains))
+      _describe -t domains 'domain' doms
+      ;;
+    3)
+      local domain="${line[1]}"
+      local -a targets=($(_world_observe_targets "$domain"))
+      if (( ${#targets} )); then
+        _describe -t targets 'target' targets
+      fi
+      ;;
+  esac
+  _arguments \
+    '--count=[Number of samples]:count:' \
+    '--interval=[Interval]:interval:' \
+    '--limit=[Max results]:limit:' \
+    '--json[Force JSON]' \
+    '--pretty[Human-readable]'
+}
+
+_world_complete_spec() {
+  case $CURRENT in
+    2)
+      local -a doms=($(_world_domains))
+      _describe -t domains 'domain' doms
+      ;;
+  esac
+  _arguments \
+    '--core[Core only, no add-ons]' \
+    '--json[Force JSON]' \
+    '--pretty[Human-readable]'
+}
+
+# ─── Main completion function ─────────────────────────────────────────────────
+
 _world() {
-  local -a commands domains
+  local -a commands
   commands=(
     'observe:Observe structured state'
     'o:Observe (alias)'
@@ -141,108 +241,12 @@ _world() {
       ;;
     args)
       local cmd="$line[1]"
-      # Normalize aliases
       case "$cmd" in
-        o) cmd=observe ;;
-        a) cmd=act ;;
-        w) cmd=await ;;
-        s) cmd=spec ;;
-      esac
-
-      case "$cmd" in
-        observe)
-          case $CURRENT in
-            2)
-              local -a doms=($(_world_domains))
-              _describe -t domains 'domain' doms
-              ;;
-            3)
-              local domain="${line[1]}"
-              local -a targets=($(_world_observe_targets "$domain"))
-              if (( ${#targets} )); then
-                _describe -t targets 'target' targets
-              fi
-              ;;
-          esac
-          _arguments \
-            '--since=[Time filter]:since:' \
-            '--limit=[Max results]:limit:' \
-            '--json[Force JSON]' \
-            '--pretty[Human-readable]'
-          ;;
-        act)
-          case $CURRENT in
-            2)
-              local -a doms=($(_world_domains))
-              _describe -t domains 'domain' doms
-              ;;
-            3|4)
-              # Position 3: target or verb. Position 4: verb.
-              # Offer verbs for this domain
-              local domain="${line[1]}"
-              local -a verbs=($(_world_verbs "$domain"))
-              if (( ${#verbs} )); then
-                _describe -t verbs 'verb' verbs
-              fi
-              ;;
-          esac
-          _arguments \
-            '--dry-run[Preview without executing]' \
-            '--json[Force JSON]' \
-            '--pretty[Human-readable]'
-          ;;
-        await)
-          case $CURRENT in
-            2)
-              local -a doms=($(_world_domains))
-              _describe -t domains 'domain' doms
-              ;;
-            3|4)
-              local domain="${line[1]}"
-              local -a conds=($(_world_conditions "$domain"))
-              if (( ${#conds} )); then
-                _describe -t conditions 'condition' conds
-              fi
-              ;;
-          esac
-          _arguments \
-            '--timeout=[Max seconds]:timeout:' \
-            '--json[Force JSON]' \
-            '--pretty[Human-readable]'
-          ;;
-        sample)
-          case $CURRENT in
-            2)
-              local -a doms=($(_world_domains))
-              _describe -t domains 'domain' doms
-              ;;
-            3)
-              local domain="${line[1]}"
-              local -a targets=($(_world_observe_targets "$domain"))
-              if (( ${#targets} )); then
-                _describe -t targets 'target' targets
-              fi
-              ;;
-          esac
-          _arguments \
-            '--count=[Number of samples]:count:' \
-            '--interval=[Interval]:interval:' \
-            '--limit=[Max results]:limit:' \
-            '--json[Force JSON]' \
-            '--pretty[Human-readable]'
-          ;;
-        spec)
-          case $CURRENT in
-            2)
-              local -a doms=($(_world_domains))
-              _describe -t domains 'domain' doms
-              ;;
-          esac
-          _arguments \
-            '--core[Core only, no add-ons]' \
-            '--json[Force JSON]' \
-            '--pretty[Human-readable]'
-          ;;
+        observe|o)  _world_complete_observe ;;
+        act|a)      _world_complete_act ;;
+        await|w)    _world_complete_await ;;
+        sample)     _world_complete_sample ;;
+        spec|s)     _world_complete_spec ;;
         completions)
           local -a shells=(bash zsh fish)
           _describe -t shells 'shell' shells
@@ -252,10 +256,62 @@ _world() {
   esac
 }
 
+# ─── Alias-specific completion wrappers ───────────────────────────────────────
+# When invoked as `wo <TAB>`, zsh skips the subcommand — go straight to domain.
+
+_world_alias_observe() {
+  _arguments -C \
+    '--json[Force JSON]' \
+    '--pretty[Human-readable]' \
+    '(-q --quiet)'{-q,--quiet}'[Exit code only]' \
+    '*:: :->args' \
+    && return
+  [[ "$state" == args ]] && _world_complete_observe
+}
+
+_world_alias_act() {
+  _arguments -C \
+    '--json[Force JSON]' \
+    '--pretty[Human-readable]' \
+    '(-q --quiet)'{-q,--quiet}'[Exit code only]' \
+    '*:: :->args' \
+    && return
+  [[ "$state" == args ]] && _world_complete_act
+}
+
+_world_alias_spec() {
+  _arguments -C \
+    '--json[Force JSON]' \
+    '--pretty[Human-readable]' \
+    '(-q --quiet)'{-q,--quiet}'[Exit code only]' \
+    '*:: :->args' \
+    && return
+  [[ "$state" == args ]] && _world_complete_spec
+}
+
+_world_alias_await() {
+  _arguments -C \
+    '--json[Force JSON]' \
+    '--pretty[Human-readable]' \
+    '(-q --quiet)'{-q,--quiet}'[Exit code only]' \
+    '*:: :->args' \
+    && return
+  [[ "$state" == args ]] && _world_complete_await
+}
+
+_world_alias_sample() {
+  _arguments -C \
+    '--json[Force JSON]' \
+    '--pretty[Human-readable]' \
+    '(-q --quiet)'{-q,--quiet}'[Exit code only]' \
+    '*:: :->args' \
+    && return
+  [[ "$state" == args ]] && _world_complete_sample
+}
+
 compdef _world world
-# Also complete aliases
-compdef _world wo
-compdef _world wa
-compdef _world ws
-compdef _world ww
-compdef _world wsample
+compdef _world_alias_observe wo
+compdef _world_alias_act wa
+compdef _world_alias_spec ws
+compdef _world_alias_await ww
+compdef _world_alias_sample wsample
