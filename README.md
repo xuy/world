@@ -49,7 +49,7 @@ world observe process top_cpu --limit 5
 world act process 5678 kill
 
 # Confirm it's gone
-world await process stopped 5678
+world await process 5678 stopped
 ```
 
 `observe` reads structured state. `act` changes it through a declared verb. `await` blocks until a condition holds, using OS-native events where available (kqueue for process exit) and falling back to exponential backoff polling.
@@ -102,14 +102,18 @@ Package managers are separate domains (brew, pip, npm) rather than a single "pac
 ## CLI
 
 ```
+world COMMAND DOMAIN [TARGET] [PREDICATE] [OPTIONS]
+```
+
+```
 world observe DOMAIN [TARGET] [--limit N] [--since T]
-world act     DOMAIN [TARGET] VERB [KEY=VALUE ...] [--dry-run]
-world await   DOMAIN CONDITION [TARGET] [--timeout N]
+world act     DOMAIN [TARGET] VERB [ARGS...] [--dry-run]
+world await   DOMAIN [TARGET] CONDITION [--timeout N]
 world sample  DOMAIN [TARGET] [--count N] [--interval T] [--limit N]
 world spec    [DOMAIN]
 ```
 
-TARGET is optional for session domain lifecycle actions (e.g., `world act browser open url=...`).
+Every command follows the same shape: domain, then target, then what to do. TARGET is optional for targetless actions (e.g., `world act browser open https://example.com`, `world await network internet_reachable`).
 
 Output is JSON when piped and human-readable in TTY. `--json` / `--pretty` to force. `-q` for exit code only.
 

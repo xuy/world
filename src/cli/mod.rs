@@ -99,14 +99,16 @@ pub enum Command {
     /// Uses OS-native event mechanisms where available (kqueue for
     /// process exit on macOS), falls back to polling with exponential
     /// backoff. Always has a timeout.
-    /// Await a condition: world await DOMAIN CONDITION [TARGET]
+    ///
+    /// For targeted conditions:  world await DOMAIN TARGET CONDITION
+    /// For targetless conditions: world await DOMAIN CONDITION
     Await {
         /// Domain (process, container, network, ...)
         domain: String,
-        /// Condition to wait for (stopped, running, healthy, ...)
-        condition: String,
-        /// Target for the check (PID, hostname, container ID, ...)
-        target: Option<String>,
+        /// Target or condition (if no second positional, this is the condition)
+        target_or_condition: String,
+        /// Condition (if target was given)
+        condition: Option<String>,
         /// Maximum seconds to wait (default: 60)
         #[arg(long, default_value = "60")]
         timeout: u32,
@@ -233,11 +235,19 @@ pub async fn run(cli: Cli) -> ExitCode {
 
         Command::Await {
             domain,
+            target_or_condition,
             condition,
-            target,
             timeout,
         } => {
-            run_await(mode, platform, &domain, &condition, target, timeout).await
+            // Two forms:
+            //   world await DOMAIN TARGET CONDITION  → target_or_condition=TARGET, condition=Some(CONDITION)
+            //   world await DOMAIN CONDITION         → target_or_condition=CONDITION, condition=None
+            let (target, cond) = if let Some(c) = condition {
+                (Some(target_or_condition), c)
+            } else {
+                (None, target_or_condition)
+            };
+            run_await(mode, platform, &domain, &cond, target, timeout).await
         }
 
         Command::Sample {
