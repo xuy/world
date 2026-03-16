@@ -52,6 +52,11 @@ pub trait DomainPlugin: Send + Sync {
     /// Whether a handler is in the allowlist.
     fn is_allowed(&self, handler: &str) -> bool;
 
+    /// Whether this domain uses session-scoped state.
+    fn is_session(&self) -> bool {
+        false
+    }
+
     /// Observe structured state.
     async fn observe(
         &self,

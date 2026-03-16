@@ -49,21 +49,24 @@ pub fn check(mutates: &[String]) -> Result<(), String> {
 
 /// Check a single mutation tag against the ceiling.
 fn tag_allowed(tag: &str) -> bool {
-    for pattern in CEILING {
-        if *pattern == "*" {
-            return true;
-        }
-        if pattern.ends_with(".*") {
-            let prefix = &pattern[..pattern.len() - 2];
-            if tag.starts_with(prefix) && tag.len() > prefix.len() && tag.as_bytes()[prefix.len()] == b'.' {
-                return true;
-            }
-        }
-        if *pattern == tag {
+    CEILING.iter().any(|pattern| pattern_matches(pattern, tag))
+}
+
+/// Check whether a single pattern matches a tag.
+fn pattern_matches(pattern: &str, tag: &str) -> bool {
+    if pattern == "*" {
+        return true;
+    }
+    if pattern.ends_with(".*") {
+        let prefix = &pattern[..pattern.len() - 2];
+        if tag.starts_with(prefix)
+            && tag.len() > prefix.len()
+            && tag.as_bytes()[prefix.len()] == b'.'
+        {
             return true;
         }
     }
-    false
+    pattern == tag
 }
 
 #[cfg(test)]
@@ -89,5 +92,19 @@ mod tests {
         // Current ceiling is &["*"], so everything passes
         let tags = vec!["network.interfaces".to_string(), "process.processes".to_string()];
         assert!(check(&tags).is_ok());
+    }
+
+    #[test]
+    fn test_wildcard_mutates_paths() {
+        // browser.* should allow browser.url
+        assert!(pattern_matches("browser.*", "browser.url"));
+        // browser.* should allow browser.elements
+        assert!(pattern_matches("browser.*", "browser.elements"));
+        // browser.* should allow the literal wildcard tag browser.*
+        assert!(pattern_matches("browser.*", "browser.*"));
+        // browser.* should NOT allow process.processes
+        assert!(!pattern_matches("browser.*", "process.processes"));
+        // network.* should NOT allow browser.url
+        assert!(!pattern_matches("network.*", "browser.url"));
     }
 }

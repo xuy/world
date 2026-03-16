@@ -256,7 +256,12 @@ pub fn format_spec(
         OutputMode::Pretty => {
             for s in &specs {
                 let domain_name = s["domain"].as_str().unwrap_or("?");
-                println!("{}", domain_name.cyan().bold());
+                let session_flag = s.get("session").and_then(|v| v.as_bool()).unwrap_or(false);
+                if session_flag {
+                    println!("{} {}", domain_name.cyan().bold(), "(session)".yellow());
+                } else {
+                    println!("{}", domain_name.cyan().bold());
+                }
 
                 if let Some(obs) = s.get("observations") {
                     if let Some(obj) = obs.as_object() {

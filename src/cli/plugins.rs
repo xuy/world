@@ -30,6 +30,7 @@ pub struct Plugin {
     pub spec: Value,
     pub entries: Vec<DispatchEntry>,
     pub handler_path: PathBuf,
+    pub session: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -53,6 +54,9 @@ impl Plugin {
         let dispatch_file: DispatchFile =
             serde_json::from_str(&std::fs::read_to_string(&dispatch_path)?)?;
 
+        // Read session flag
+        let session = spec["session"].as_bool().unwrap_or(false);
+
         // Find handler executable
         let handler_path = find_handler(dir)?;
 
@@ -61,6 +65,7 @@ impl Plugin {
             spec,
             entries: dispatch_file.entries,
             handler_path,
+            session,
         })
     }
 
@@ -182,6 +187,10 @@ impl DomainPlugin for Plugin {
     fn is_allowed(&self, _handler: &str) -> bool {
         // External plugins manage their own allowlists
         true
+    }
+
+    fn is_session(&self) -> bool {
+        self.session
     }
 
     async fn observe(

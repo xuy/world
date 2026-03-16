@@ -18,58 +18,78 @@ pub struct Entry {
     pub default_arg: Option<&'static str>,
 }
 
+impl Entry {
+    const fn new(target: &'static str, verb: &'static str, handler: &'static str, mutates: &'static [&'static str]) -> Self {
+        Self { target, verb, handler, mutates, default_arg: None }
+    }
+}
+
+static NETWORK: &[Entry] = &[
+    Entry::new("dns_cache",         "reset",   "flush_dns",      &["network.interfaces"]),
+    Entry::new("dhcp_lease",        "reset",   "renew_dhcp",     &["network.interfaces"]),
+    Entry::new("interfaces.<name>", "enable",  "toggle_adapter", &["network.interfaces"]),
+    Entry::new("interfaces.<name>", "disable", "toggle_adapter", &["network.interfaces"]),
+    Entry::new("wifi.<ssid>",       "remove",  "forget_wifi",    &["network.interfaces"]),
+    Entry::new("wifi",              "restart", "reconnect_wifi", &["network.interfaces"]),
+    Entry::new("proxy",             "reset",   "reset_proxy",    &["network.interfaces"]),
+];
+
+static SERVICE: &[Entry] = &[
+    Entry::new("<name>",              "restart", "restart_service",  &["service.status"]),
+    Entry::new("<name>",              "enable",  "start_service",    &["service.status"]),
+    Entry::new("<name>",              "disable", "stop_service",     &["service.status"]),
+    Entry::new("<name>.startup_mode", "set",     "set_startup_mode", &["service.startup_mode"]),
+];
+
+static DISK: &[Entry] = &[
+    Entry::new("temp",   "clear",  "clear_temp_files",          &["disk.mounts"]),
+    Entry::new("temp",   "reset",  "clear_temp_files",          &["disk.mounts"]),
+    Entry::new("caches", "clear",  "remove_large_known_caches", &["disk.mounts"]),
+    Entry::new("caches", "reset",  "remove_large_known_caches", &["disk.mounts"]),
+    Entry::new("<path>", "add",    "mount_share",               &["disk.mounts"]),
+    Entry::new("<path>", "remove", "unmount_share",             &["disk.mounts"]),
+];
+
+static PRINTER: &[Entry] = &[
+    Entry::new("<name>.queue",  "clear",   "clear_queue",              &["printer.queue_jobs"]),
+    Entry::new("spooler",       "restart", "restart_spooler",          &["printer.status"]),
+    Entry::new("default",       "set",     "set_default_printer",      &["printer.is_default"]),
+    Entry::new("<name>.driver", "reset",   "reinstall_printer_driver", &["printer.driver"]),
+];
+
+static BREW: &[Entry] = &[
+    Entry::new("<name>", "add",    "install_package",   &["brew.installed", "brew.version"]),
+    Entry::new("<name>", "remove", "uninstall_package", &["brew.installed"]),
+    Entry::new("<name>", "reset",  "repair_package",    &["brew.version"]),
+    Entry::new("<name>", "set",    "update_package",    &["brew.version"]),
+];
+
+static PROCESS: &[Entry] = &[
+    Entry::new("<pid>",          "kill",   "kill_graceful", &["process.processes"]),
+    Entry::new("<pid>",          "remove", "kill_force",    &["process.processes"]),
+    Entry::new("<pid>.priority", "set",    "set_priority",  &["process.processes"]),
+];
+
+static CONTAINER: &[Entry] = &[
+    Entry::new("<id>",    "enable",  "start_container",   &["container.containers"]),
+    Entry::new("<id>",    "disable", "stop_container",    &["container.containers"]),
+    Entry::new("<id>",    "restart", "restart_container", &["container.containers"]),
+    Entry::new("<id>",    "remove",  "remove_container",  &["container.containers"]),
+    Entry::new("<image>", "add",     "pull_image",        &["container.images"]),
+    Entry::new("images",  "clear",   "prune_images",      &["container.images"]),
+    Entry::new("volumes", "clear",   "prune_volumes",     &["container.volumes"]),
+];
+
 /// All dispatch entries for a domain.
 pub fn entries(domain: &str) -> &'static [Entry] {
     match domain {
-        "network" => &[
-            Entry { target: "dns_cache",         verb: "reset",   handler: "flush_dns",        mutates: &["network.interfaces"], default_arg: None },
-            Entry { target: "dhcp_lease",        verb: "reset",   handler: "renew_dhcp",       mutates: &["network.interfaces"], default_arg: None },
-            Entry { target: "interfaces.<name>", verb: "enable",  handler: "toggle_adapter",   mutates: &["network.interfaces"], default_arg: None },
-            Entry { target: "interfaces.<name>", verb: "disable", handler: "toggle_adapter",   mutates: &["network.interfaces"], default_arg: None },
-            Entry { target: "wifi.<ssid>",       verb: "remove",  handler: "forget_wifi",      mutates: &["network.interfaces"], default_arg: None },
-            Entry { target: "wifi",              verb: "restart", handler: "reconnect_wifi",   mutates: &["network.interfaces"], default_arg: None },
-            Entry { target: "proxy",             verb: "reset",   handler: "reset_proxy",      mutates: &["network.interfaces"], default_arg: None },
-        ],
-        "service" => &[
-            Entry { target: "<name>",              verb: "restart", handler: "restart_service",   mutates: &["service.status"], default_arg: None },
-            Entry { target: "<name>",              verb: "enable",  handler: "start_service",     mutates: &["service.status"], default_arg: None },
-            Entry { target: "<name>",              verb: "disable", handler: "stop_service",      mutates: &["service.status"], default_arg: None },
-            Entry { target: "<name>.startup_mode", verb: "set",     handler: "set_startup_mode",  mutates: &["service.startup_mode"], default_arg: None },
-        ],
-        "disk" => &[
-            Entry { target: "temp",   verb: "clear", handler: "clear_temp_files",           mutates: &["disk.mounts"], default_arg: None },
-            Entry { target: "temp",   verb: "reset", handler: "clear_temp_files",           mutates: &["disk.mounts"], default_arg: None },
-            Entry { target: "caches", verb: "clear", handler: "remove_large_known_caches",  mutates: &["disk.mounts"], default_arg: None },
-            Entry { target: "caches", verb: "reset", handler: "remove_large_known_caches",  mutates: &["disk.mounts"], default_arg: None },
-            Entry { target: "<path>", verb: "add",   handler: "mount_share",                mutates: &["disk.mounts"], default_arg: None },
-            Entry { target: "<path>", verb: "remove", handler: "unmount_share",             mutates: &["disk.mounts"], default_arg: None },
-        ],
-        "printer" => &[
-            Entry { target: "<name>.queue",  verb: "clear",   handler: "clear_queue",               mutates: &["printer.queue_jobs"], default_arg: None },
-            Entry { target: "spooler",       verb: "restart", handler: "restart_spooler",            mutates: &["printer.status"], default_arg: None },
-            Entry { target: "default",       verb: "set",     handler: "set_default_printer",        mutates: &["printer.is_default"], default_arg: None },
-            Entry { target: "<name>.driver", verb: "reset",   handler: "reinstall_printer_driver",   mutates: &["printer.driver"], default_arg: None },
-        ],
-        "brew" => &[
-            Entry { target: "<name>", verb: "add",    handler: "install_package",    mutates: &["brew.installed", "brew.version"], default_arg: None },
-            Entry { target: "<name>", verb: "remove", handler: "uninstall_package",  mutates: &["brew.installed"], default_arg: None },
-            Entry { target: "<name>", verb: "reset",  handler: "repair_package",     mutates: &["brew.version"], default_arg: None },
-            Entry { target: "<name>", verb: "set",    handler: "update_package",     mutates: &["brew.version"], default_arg: None },
-        ],
-        "process" => &[
-            Entry { target: "<pid>",          verb: "kill",   handler: "kill_graceful",  mutates: &["process.processes"], default_arg: None },
-            Entry { target: "<pid>",          verb: "remove", handler: "kill_force",     mutates: &["process.processes"], default_arg: None },
-            Entry { target: "<pid>.priority", verb: "set",    handler: "set_priority",   mutates: &["process.processes"], default_arg: None },
-        ],
-        "container" => &[
-            Entry { target: "<id>",    verb: "enable",  handler: "start_container",    mutates: &["container.containers"], default_arg: None },
-            Entry { target: "<id>",    verb: "disable", handler: "stop_container",     mutates: &["container.containers"], default_arg: None },
-            Entry { target: "<id>",    verb: "restart", handler: "restart_container",  mutates: &["container.containers"], default_arg: None },
-            Entry { target: "<id>",    verb: "remove",  handler: "remove_container",   mutates: &["container.containers"], default_arg: None },
-            Entry { target: "<image>", verb: "add",     handler: "pull_image",         mutates: &["container.images"], default_arg: None },
-            Entry { target: "images",  verb: "clear",   handler: "prune_images",       mutates: &["container.images"], default_arg: None },
-            Entry { target: "volumes", verb: "clear",   handler: "prune_volumes",      mutates: &["container.volumes"], default_arg: None },
-        ],
+        "network"   => NETWORK,
+        "service"   => SERVICE,
+        "disk"      => DISK,
+        "printer"   => PRINTER,
+        "brew"      => BREW,
+        "process"   => PROCESS,
+        "container" => CONTAINER,
         _ => &[],
     }
 }
