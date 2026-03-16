@@ -8,46 +8,38 @@ The motivation is simple: agents that manage real systems — diagnosing why a s
 
 This project grew out of [Noah](https://github.com/xuy/noah), an AI IT department for small businesses, where the agent needs to observe and manage machines on behalf of non-technical users.
 
-```
-                          ┌─────────────────────────────────┐
-                          │           AI Agent               │
-                          │   (Noah, or any LLM agent)       │
-                          │                                  │
-                          │   Holds a world model built      │
-                          │   from structured observations   │
-                          └──────────┬──────────────────┬────┘
-                                     │                  │
-                            observe / await          act (verb)
-                           ← structured JSON    → declared mutates
-                                     │                  │
-                    ┌────────────────┴──────────────────┴────────────────┐
-                    │                    world CLI                        │
-                    │                                                     │
-                    │   ┌───────────────────────────────────────────┐     │
-                    │   │          capability ceiling                │     │
-                    │   │   compiled-in, no runtime override         │     │
-                    │   │   e.g. ["network.*", "service.*"]         │     │
-                    │   └───────────────────────────────────────────┘     │
-                    │                                                     │
-                    │   spec ──→ schema for each domain:                  │
-                    │            observations, actions, mutates           │
-                    ├─────────────────────────────────────────────────────┤
-                    │                     domains                         │
-                    │                                                     │
-                    │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐  │
-                    │  │ network │ │ process │ │ service │ │  disk   │  │
-                    │  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘  │
-                    │  ┌────┴────┐ ┌────┴────┐ ┌────┴────┐ ┌────┴────┐  │
-                    │  │  brew  │ │   pip   │ │   npm   │ │   ...   │  │
-                    │  └────┬────┘ └────┬────┘ └────┬────┘ └─────────┘  │
-                    │       │          │          │        plugins/      │
-                    │    native      python3      node    (any language) │
-                    └───────┴──────────┴──────────┴──────────────────────┘
-                            │          │          │
-                    ┌───────┴──────────┴──────────┴──────────────────────┐
-                    │                 actual system                       │
-                    │   processes, interfaces, containers, packages, ...  │
-                    └────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    Agent["<b>AI Agent</b><br/><i>Noah, or any LLM agent</i><br/>Holds a world model built<br/>from structured observations"]
+
+    Agent -- "observe / await<br/>← structured JSON" --> World
+    Agent -- "act (verb)<br/>→ declared mutates" --> World
+
+    subgraph World ["world CLI"]
+        Ceiling["<b>capability ceiling</b><br/>compiled-in, no runtime override<br/>e.g. [&quot;network.*&quot;, &quot;service.*&quot;]"]
+        Spec["<b>spec</b> — schema per domain:<br/>observations, actions, mutates"]
+
+        subgraph Domains [domains]
+            direction LR
+            network
+            process
+            service
+            disk
+            container
+            log
+            printer
+        end
+
+        subgraph Plugins ["plugins <i>(any language)</i>"]
+            direction LR
+            brew["brew<br/><i>native</i>"]
+            pip["pip<br/><i>python3</i>"]
+            npm["npm<br/><i>node</i>"]
+            more["..."]
+        end
+    end
+
+    World --- System["<b>actual system</b><br/>processes, interfaces, containers,<br/>packages, services, ..."]
 ```
 
 The agent never touches the system directly. It reads structured state through `observe`, changes state through `act` with declared verbs, and waits for conditions through `await`. The capability ceiling ensures the binary itself is structurally limited — an agent cannot exceed what the binary was compiled to allow.
