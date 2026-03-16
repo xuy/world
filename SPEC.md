@@ -64,6 +64,7 @@ Every domain must define a sensible default when no target is given. The default
 | disk | Mounts + space usage | `temp_usage` for temp dirs |
 | brew | First 20 installed (alphabetical) | `all` for full list, `<name>` for details |
 | pip | Installed packages with versions | `<name>` for details |
+| npm | Packages in nearest project | `global` for global, `<name>` for details |
 | printer | List printers | `<name>` for details |
 | log | Recent errors | `recent_warnings`, `<subsystem>` |
 
@@ -125,6 +126,7 @@ Every action declares which observation schema paths it modifies via `mutates` t
 | `act service <name> restart` | `service.status` |
 | `act brew <name> add` | `brew.installed`, `brew.version` |
 | `act pip <name> add` | `pip.installed`, `pip.version` |
+| `act npm <name> add` | `npm.installed`, `npm.version` |
 | `act process <pid> kill` | `process.processes` |
 
 An action with `mutates: []` is read-only and always allowed. The `mutates` metadata is a world-property (a fact about what the action does), not an actor-property (not about who is allowed to do it).
@@ -167,6 +169,7 @@ Each domain declares its valid conditions:
 | disk | writable |
 | brew | installed |
 | pip | installed |
+| npm | installed |
 | printer | prints |
 
 Invalid conditions return an error listing available ones.
