@@ -1,0 +1,79 @@
+direction: down
+
+system: System\n(partially observable) {
+  shape: rectangle
+  style: {
+    fill: "#f5f5f5"
+    stroke: "#333"
+    font-size: 16
+    bold: true
+  }
+}
+
+domains: Domains {
+  shape: rectangle
+  style: {
+    fill: "#e8e8e8"
+    stroke: "#333"
+    font-size: 16
+    bold: true
+  }
+}
+
+spec: spec\nschema per domain {
+  shape: page
+  style: {
+    fill: "#fff"
+    stroke: "#666"
+    font-size: 13
+  }
+}
+
+agent: AI Agent {
+  style: {
+    fill: "#f0f0f0"
+    stroke: "#333"
+    font-size: 16
+    bold: true
+  }
+
+  belief: world model / belief {
+    shape: oval
+    style: {
+      fill: "#fff"
+      stroke: "#555"
+      font-size: 13
+    }
+  }
+}
+
+system -> domains: {style.stroke: "#333"}
+
+domains -> agent: observe {
+  style: {
+    stroke: "#333"
+    font-size: 13
+  }
+}
+
+agent -> domains: act {
+  style: {
+    stroke: "#333"
+    font-size: 13
+  }
+}
+
+agent -> domains: await {
+  style: {
+    stroke: "#999"
+    stroke-dash: 3
+    font-size: 13
+  }
+}
+
+spec -> domains: {
+  style: {
+    stroke: "#999"
+    stroke-dash: 3
+  }
+}
