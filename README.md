@@ -54,6 +54,23 @@ world await process stopped 5678
 
 `observe` reads structured state. `act` changes it through a declared verb. `await` blocks until a condition holds, using OS-native events where available (kqueue for process exit) and falling back to exponential backoff polling.
 
+### Session domains
+
+Most domains are ambient — processes, disks, and networks always have state to observe. Some domains are different: they start empty and must be populated by an action before observation is meaningful. A browser has no page until you open one. An SSH connection has no host until you connect.
+
+A domain declares this with `"session": true` in its spec. The agent sees schema-conforming null observations (all fields null, arrays empty) and knows from the spec that an action like `open` will populate them. No special state values, no separate lifecycle protocol — just the same observe/act/await loop, where the initial observation happens to be empty.
+
+```bash
+world observe browser
+# → { "url": null, "title": null, "elements": [], "snapshot": null }
+
+world act browser open url=https://example.com
+# → { "url": "https://example.com", "title": "Example", "elements": [...], ... }
+
+world act browser close
+# → { "url": null, "title": null, "elements": [], "snapshot": null }
+```
+
 ### sample
 
 A single observation is a snapshot. For quantities like CPU%, one snapshot is nearly useless. `sample` takes repeated observations and reduces them statistically:
@@ -78,6 +95,7 @@ Fields that vary become `{mean, min, max, delta, rate_per_sec}`. Constant fields
 | **npm** | Project packages (or global) | install, uninstall, pin, update |
 | **printer** | Printers + status | clear_queue, restart_spooler, set_default |
 | **log** | Recent errors | *(read-only)* |
+| **browser** *(session)* | Page URL + accessibility tree | open, close, click, fill, select, hover, scroll, press, eval |
 
 Package managers are separate domains (brew, pip, npm) rather than a single "package" abstraction, because they have different scopes (system, virtualenv, node_modules) and the handler should use the runtime it observes.
 
@@ -85,11 +103,13 @@ Package managers are separate domains (brew, pip, npm) rather than a single "pac
 
 ```
 world observe DOMAIN [TARGET] [--limit N] [--since T]
-world act     DOMAIN TARGET VERB [KEY=VALUE ...] [--dry-run]
+world act     DOMAIN [TARGET] VERB [KEY=VALUE ...] [--dry-run]
 world await   DOMAIN CONDITION [TARGET] [--timeout N]
 world sample  DOMAIN [TARGET] [--count N] [--interval T] [--limit N]
 world spec    [DOMAIN]
 ```
+
+TARGET is optional for session domain lifecycle actions (e.g., `world act browser open url=...`).
 
 Output is JSON when piped and human-readable in TTY. `--json` / `--pretty` to force. `-q` for exit code only.
 
@@ -105,6 +125,8 @@ plugins/npm/
 ```
 
 The handler can be in any language (`.py` → python3, `.js` → node, `.sh` → sh, or a bare executable). The protocol is one JSON object in, one JSON object out.
+
+Session domains (like `browser`) follow the same plugin structure. Add `"session": true` to spec.json. The handler returns null/empty observations when the session is inactive, and actions like `open`/`close` manage the lifecycle. The browser plugin delegates to [agent-browser](https://github.com/vercel-labs/agent-browser), which manages browser state via a background daemon.
 
 ## Building
 

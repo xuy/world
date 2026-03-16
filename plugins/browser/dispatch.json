@@ -1,0 +1,13 @@
+{
+  "entries": [
+    { "target": "",      "verb": "open",   "handler": "navigate",     "mutates": ["browser.*"] },
+    { "target": "",      "verb": "close",  "handler": "close",        "mutates": ["browser.*"] },
+    { "target": "<ref>", "verb": "click",  "handler": "click",        "mutates": ["browser.*"] },
+    { "target": "<ref>", "verb": "fill",   "handler": "fill",         "mutates": ["browser.elements"] },
+    { "target": "<ref>", "verb": "select", "handler": "select",       "mutates": ["browser.elements"] },
+    { "target": "<ref>", "verb": "hover",  "handler": "hover",        "mutates": ["browser.elements"] },
+    { "target": "",      "verb": "scroll", "handler": "scroll",       "mutates": ["browser.elements"] },
+    { "target": "",      "verb": "press",  "handler": "press_key",    "mutates": ["browser.elements"] },
+    { "target": "",      "verb": "eval",   "handler": "eval_js",      "mutates": ["browser.*"] }
+  ]
+}

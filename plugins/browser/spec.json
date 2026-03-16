@@ -1,0 +1,28 @@
+{
+  "domain": "browser",
+  "session": true,
+  "observations": {
+    "url": "string | null",
+    "title": "string | null",
+    "elements": {
+      "type": "array",
+      "item": {
+        "ref": "string",
+        "role": "string",
+        "name": "string | null"
+      }
+    },
+    "snapshot": "string | null"
+  },
+  "actions": [
+    { "verbs": ["open"],   "mutates": ["browser.*"], "args": { "url": { "type": "string" } }, "description": "Navigate to URL" },
+    { "verbs": ["close"],  "mutates": ["browser.*"], "description": "Close browser session" },
+    { "target": "<ref>",   "verbs": ["click"],  "mutates": ["browser.*"], "description": "Click element" },
+    { "target": "<ref>",   "verbs": ["fill"],   "mutates": ["browser.elements"], "args": { "text": { "type": "string" } }, "description": "Clear and fill input" },
+    { "target": "<ref>",   "verbs": ["select"], "mutates": ["browser.elements"], "args": { "value": { "type": "string" } }, "description": "Select dropdown option" },
+    { "target": "<ref>",   "verbs": ["hover"],  "mutates": ["browser.elements"], "description": "Hover element" },
+    { "verbs": ["scroll"], "mutates": ["browser.elements"], "args": { "direction": { "type": "string", "enum": ["up", "down", "left", "right"] }, "pixels": { "type": "integer" } }, "description": "Scroll page" },
+    { "verbs": ["press"],  "mutates": ["browser.elements"], "args": { "key": { "type": "string" } }, "description": "Press key (Enter, Tab, etc.)" },
+    { "verbs": ["eval"],   "mutates": ["browser.*"], "args": { "js": { "type": "string" } }, "description": "Run JavaScript" }
+  ]
+}
