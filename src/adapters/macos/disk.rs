@@ -139,6 +139,59 @@ pub async fn act(
             .with_risk(Risk::Medium)
             .with_suggestions(vec!["verify(disk_writable)".into()]))
         }
+        "unmount_share" => {
+            let path = match _target {
+                Some(p) => p,
+                None => {
+                    return Ok(UnifiedResult::err(
+                        "missing_target",
+                        "Mount path required (e.g. /Volumes/MyDisk).",
+                    ));
+                }
+            };
+
+            if dry_run {
+                return Ok(UnifiedResult::ok(
+                    format!("Would eject {path}."),
+                    json!({"dry_run": true, "target": path}),
+                ));
+            }
+
+            // Try diskutil eject first (works for most external volumes)
+            let result = exec("diskutil", &["eject", path], ExecOpts::default()).await?;
+            if result.success() {
+                return Ok(UnifiedResult::ok(
+                    format!("Ejected {path}."),
+                    json!({"action": "eject", "target": path, "method": "diskutil"}),
+                )
+                .with_risk(Risk::Low));
+            }
+
+            // Fall back to hdiutil detach (for disk images)
+            let result = exec("hdiutil", &["detach", path], ExecOpts::default()).await?;
+            if result.success() {
+                return Ok(UnifiedResult::ok(
+                    format!("Detached {path}."),
+                    json!({"action": "eject", "target": path, "method": "hdiutil"}),
+                )
+                .with_risk(Risk::Low));
+            }
+
+            // Fall back to umount
+            let result = exec("umount", &[path], ExecOpts::default()).await?;
+            if result.success() {
+                return Ok(UnifiedResult::ok(
+                    format!("Unmounted {path}."),
+                    json!({"action": "eject", "target": path, "method": "umount"}),
+                )
+                .with_risk(Risk::Low));
+            }
+
+            Ok(UnifiedResult::err(
+                "eject_failed",
+                format!("Failed to eject {path}. It may be in use."),
+            ))
+        }
         _ => Ok(UnifiedResult::err(
             "unknown_action",
             format!("Unknown disk action: {action}"),
