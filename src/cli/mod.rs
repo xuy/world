@@ -41,6 +41,7 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Command {
     /// Observe state: world observe DOMAIN [TARGET]
+    #[command(visible_alias = "o")]
     Observe {
         /// Domain (process, network, container, service, disk, ...)
         domain: String,
@@ -59,6 +60,7 @@ pub enum Command {
     ///
     /// For targeted actions:  world act DOMAIN TARGET VERB [ARGS...]
     /// For session actions:   world act DOMAIN VERB [ARGS...]
+    #[command(visible_alias = "a")]
     Act {
         /// Domain (network, service, disk, ... or any plugin)
         domain: String,
@@ -77,6 +79,7 @@ pub enum Command {
     },
 
     /// Show domain spec — observations + actions
+    #[command(visible_alias = "s")]
     Spec {
         /// Domain to show (omit for all domains)
         domain: Option<String>,
@@ -102,6 +105,7 @@ pub enum Command {
     ///
     /// For targeted conditions:  world await DOMAIN TARGET CONDITION
     /// For targetless conditions: world await DOMAIN CONDITION
+    #[command(visible_alias = "w")]
     Await {
         /// Domain (process, container, network, ...)
         domain: String,
