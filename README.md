@@ -74,6 +74,19 @@ world await browser loaded --timeout 10
 # blocks until a page is loaded
 ```
 
+### Targets
+
+When an observation contains an array of items, the **first field** in each item is the target — the handle the agent uses to act on it. This is convention, not configuration.
+
+```
+processes:  [{ pid, name, cpu, ... }]       → world act process 5678 kill
+interfaces: [{ name, up, addresses, ... }]  → world act network en0 disable
+elements:   [{ ref, role, name, ... }]      → world act browser e2 click
+lights:     [{ id, name, state, ... }]      → world act home living_room_light enable
+```
+
+Handlers expose a clean, actable identifier as the first field. Implementation details (like HomeAssistant entity IDs or Docker SHA hashes) never leak — the handler maps internally.
+
 ### sample
 
 A single observation is a snapshot. For quantities like CPU%, one snapshot is nearly useless. `sample` takes repeated observations and reduces them statistically:

@@ -187,9 +187,9 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                 "images": {
                     "type": "array",
                     "item": {
-                        "id": "string",
                         "repository": "string",
                         "tag": "string",
+                        "id": "string",
                         "size_bytes": "integer"
                     }
                 },
