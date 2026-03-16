@@ -8,6 +8,50 @@ The motivation is simple: agents that manage real systems — diagnosing why a s
 
 This project grew out of [Noah](https://github.com/xuy/noah), an AI IT department for small businesses, where the agent needs to observe and manage machines on behalf of non-technical users.
 
+```
+                          ┌─────────────────────────────────┐
+                          │           AI Agent               │
+                          │   (Noah, or any LLM agent)       │
+                          │                                  │
+                          │   Holds a world model built      │
+                          │   from structured observations   │
+                          └──────────┬──────────────────┬────┘
+                                     │                  │
+                            observe / await          act (verb)
+                           ← structured JSON    → declared mutates
+                                     │                  │
+                    ┌────────────────┴──────────────────┴────────────────┐
+                    │                    world CLI                        │
+                    │                                                     │
+                    │   ┌───────────────────────────────────────────┐     │
+                    │   │          capability ceiling                │     │
+                    │   │   compiled-in, no runtime override         │     │
+                    │   │   e.g. ["network.*", "service.*"]         │     │
+                    │   └───────────────────────────────────────────┘     │
+                    │                                                     │
+                    │   spec ──→ schema for each domain:                  │
+                    │            observations, actions, mutates           │
+                    ├─────────────────────────────────────────────────────┤
+                    │                     domains                         │
+                    │                                                     │
+                    │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐  │
+                    │  │ network │ │ process │ │ service │ │  disk   │  │
+                    │  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘  │
+                    │  ┌────┴────┐ ┌────┴────┐ ┌────┴────┐ ┌────┴────┐  │
+                    │  │  brew  │ │   pip   │ │   npm   │ │   ...   │  │
+                    │  └────┬────┘ └────┬────┘ └────┬────┘ └─────────┘  │
+                    │       │          │          │        plugins/      │
+                    │    native      python3      node    (any language) │
+                    └───────┴──────────┴──────────┴──────────────────────┘
+                            │          │          │
+                    ┌───────┴──────────┴──────────┴──────────────────────┐
+                    │                 actual system                       │
+                    │   processes, interfaces, containers, packages, ...  │
+                    └────────────────────────────────────────────────────┘
+```
+
+The agent never touches the system directly. It reads structured state through `observe`, changes state through `act` with declared verbs, and waits for conditions through `await`. The capability ceiling ensures the binary itself is structurally limited — an agent cannot exceed what the binary was compiled to allow.
+
 ## Why not just shell commands?
 
 An agent with shell access can do anything — that's the problem. `world` is designed around three constraints:
