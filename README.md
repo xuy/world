@@ -10,39 +10,34 @@ This project grew out of [Noah](https://github.com/xuy/noah), an AI IT departmen
 
 ```mermaid
 graph TB
-    Agent["<b>AI Agent</b><br/><i>Noah, or any LLM agent</i><br/>Holds a world model built<br/>from structured observations"]
+    System["<b>System</b><br/><i>(partially observable)</i>"]
 
-    Agent -- "observe / await<br/>← structured JSON" --> World
-    Agent -- "act (verb)<br/>→ declared mutates" --> World
+    System --- Domains
 
-    subgraph World ["world CLI"]
-        Ceiling["<b>capability ceiling</b><br/>compiled-in, no runtime override<br/>e.g. [&quot;network.*&quot;, &quot;service.*&quot;]"]
-        Spec["<b>spec</b> — schema per domain:<br/>observations, actions, mutates"]
-
-        subgraph Domains [domains]
-            direction LR
-            network
-            process
-            service
-            disk
-            container
-            log
-            printer
-        end
-
-        subgraph Plugins ["plugins <i>(any language)</i>"]
-            direction LR
-            brew["brew<br/><i>native</i>"]
-            pip["pip<br/><i>python3</i>"]
-            npm["npm<br/><i>node</i>"]
-            more["..."]
-        end
+    subgraph Domains [" "]
+        direction LR
+        network
+        process
+        service
+        disk
+        brew
+        pip
+        npm
+        ···
     end
 
-    World --- System["<b>actual system</b><br/>processes, interfaces, containers,<br/>packages, services, ..."]
+    Spec["<b>spec</b><br/>schema per domain"] <--> Domains
+
+    Domains -- "observe ↓" --> Agent
+    Agent -- "act ↑" --> Domains
+    Domains -. "await ↻" .-> Domains
+
+    subgraph Agent ["AI Agent"]
+        WorldModel(["world model / belief"])
+    end
 ```
 
-The agent never touches the system directly. It reads structured state through `observe`, changes state through `act` with declared verbs, and waits for conditions through `await`. The capability ceiling ensures the binary itself is structurally limited — an agent cannot exceed what the binary was compiled to allow.
+The agent builds a world model from structured observations. It changes state through declared verbs (`act`), and waits for conditions (`await`) instead of polling. The `spec` describes every domain's schema — what can be observed, what actions exist, what each action mutates — so the agent discovers capabilities rather than guessing.
 
 ## Why not just shell commands?
 
