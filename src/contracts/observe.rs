@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ObserveDomain {
-    System,
     Network,
     Service,
     Process,
@@ -18,7 +17,6 @@ pub enum ObserveDomain {
 impl ObserveDomain {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::System => "system",
             Self::Network => "network",
             Self::Service => "service",
             Self::Process => "process",

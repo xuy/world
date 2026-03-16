@@ -83,17 +83,17 @@ Fields that vary become `{mean, min, max, delta, rate_per_sec}`. Constant fields
 
 ## Domains
 
-| Domain | Default observation | Actions |
-|--------|-------------------|---------|
-| **process** | Top 20 by CPU | kill, set_priority |
-| **network** | Interfaces + DNS + gateway + connectivity | flush_dns, renew_dhcp, toggle_adapter, forget_wifi |
-| **container** | Running containers | start, stop, restart, remove, pull, prune |
-| **service** | Running non-Apple services | start, stop, restart, set_startup_mode |
-| **disk** | Mounts + space usage | clear_temp, remove_caches, mount/unmount |
-| **brew** | Installed packages | install, uninstall, repair, update |
-| **pip** | Installed packages + virtualenv | install, uninstall, pin, upgrade |
-| **npm** | Project packages (or global) | install, uninstall, pin, update |
-| **printer** | Printers + status | clear_queue, restart_spooler, set_default |
+| Domain | Default observation | Verbs |
+|--------|-------------------|-------|
+| **process** | Top 20 by CPU | kill, remove, set |
+| **network** | Interfaces + DNS + gateway + connectivity | reset, enable, disable, remove, restart |
+| **container** | Running containers | enable, disable, restart, remove, add, clear |
+| **service** | Running non-Apple services | restart, enable, disable, set |
+| **disk** | Mounts + space usage | clear, reset, add, remove |
+| **brew** | Installed packages | add, remove, reset, set |
+| **pip** | Installed packages + virtualenv | add, remove, set |
+| **npm** | Project packages (or global) | add, remove, set |
+| **printer** | Printers + status | clear, restart, set, reset |
 | **log** | Recent errors | *(read-only)* |
 | **browser** *(session)* | Page URL + accessibility tree | open, close, click, fill, select, hover, scroll, press, eval |
 

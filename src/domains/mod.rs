@@ -33,7 +33,6 @@ pub async fn dispatch_observe(
         ObserveDomain::Log => log::observe(platform, target, since, limit).await,
         ObserveDomain::Process => process::observe(platform, target, limit).await,
         ObserveDomain::Container => container::observe(platform, target, limit).await,
-        _ => Ok(UnifiedResult::unsupported(domain.as_str())),
     }
 }
 
@@ -135,7 +134,6 @@ pub fn domain_capabilities(domain: ObserveDomain) -> UnifiedResult {
             vec!["container_running", "container_healthy", "image_exists", "volume_exists"],
             vec!["Requires Docker or Podman runtime"],
         ),
-        _ => (vec![], vec![], vec![], vec![]),
     };
 
     UnifiedResult::ok(

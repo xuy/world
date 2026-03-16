@@ -214,12 +214,6 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                 { "target": "volumes",  "verbs": ["clear"],   "mutates": ["container.volumes"],        "description": "Prune unused volumes" }
             ]
         }),
-
-        _ => json!({
-            "domain": domain.as_str(),
-            "observations": {},
-            "actions": []
-        }),
     }
 }
 
