@@ -33,7 +33,7 @@ pub async fn observe(
         None => {
             return Ok(UnifiedResult::ok(
                 "No container runtime found. Install Docker or Podman.",
-                json!({"runtime": null, "containers": [], "warnings": ["Neither docker nor podman found in PATH."]}),
+                json!({"runtime": null, "containers": []}),
             ));
         }
     };
@@ -99,7 +99,6 @@ async fn observe_containers(runtime: &str, target: Option<&str>) -> Result<Unifi
         images: None,
         volumes: None,
         runtime: runtime.into(),
-        warnings: None,
     };
 
     Ok(UnifiedResult::ok(

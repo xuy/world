@@ -45,8 +45,7 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                     }
                 },
                 "internet_reachable": "bool | null",
-                "proxy_enabled": "bool | null",
-                "warnings": ["string"]
+                "proxy_enabled": "bool | null"
             },
             "actions": [
                 { "target": "dns_cache",         "verbs": ["reset"],             "mutates": ["network.interfaces"],      "description": "Flush DNS cache" },
@@ -90,8 +89,7 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                         "available_bytes": "integer",
                         "percent_used": "float"
                     }
-                },
-                "warnings": ["string"]
+                }
             },
             "actions": [
                 { "target": "temp",   "verbs": ["clear", "reset"], "mutates": ["disk.mounts"],             "description": "Clear temporary files" },
@@ -172,9 +170,7 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                         "memory_percent": "float | null",
                         "command": "string | null"
                     }
-                },
-                "total_count": "integer",
-                "warnings": ["string"]
+                }
             },
             "actions": [
                 { "target": "<pid>",          "verbs": ["kill"],    "mutates": ["process.processes"],       "description": "Graceful kill (SIGTERM)" },
@@ -214,8 +210,7 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                         "mountpoint": "string"
                     }
                 },
-                "runtime": "docker | podman",
-                "warnings": ["string"]
+                "runtime": "docker | podman"
             },
             "actions": [
                 { "target": "<id>",     "verbs": ["enable"],  "mutates": ["container.containers"],     "description": "Start a container" },

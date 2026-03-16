@@ -70,8 +70,6 @@ async fn observe_processes(target: Option<&str>, limit: Option<u32>) -> Result<U
 
     let state = ProcessState {
         processes,
-        total_count: total,
-        warnings: Some(vec!["CPU/memory values are point-in-time snapshots.".into()]),
     };
 
     Ok(UnifiedResult::ok(
@@ -107,8 +105,6 @@ async fn observe_top(limit: Option<u32>, sort_key: &str) -> Result<UnifiedResult
     let label = if sort_key == "pcpu" { "CPU" } else { "memory" };
     let state = ProcessState {
         processes,
-        total_count: total,
-        warnings: Some(vec!["CPU/memory values are point-in-time snapshots.".into()]),
     };
 
     Ok(UnifiedResult::ok(
@@ -141,8 +137,6 @@ async fn observe_tree(target: Option<&str>) -> Result<UnifiedResult> {
 
     let state = ProcessState {
         processes: tree,
-        total_count: count,
-        warnings: None,
     };
 
     Ok(UnifiedResult::ok(

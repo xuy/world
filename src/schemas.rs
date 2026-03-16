@@ -14,8 +14,6 @@ pub struct NetworkState {
     pub proxy_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vpns: Option<Vec<VpnConnection>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub warnings: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,8 +138,6 @@ pub enum PrinterStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiskState {
     pub mounts: Vec<MountPoint>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub warnings: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -171,9 +167,6 @@ pub struct BrewPackageState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessState {
     pub processes: Vec<ProcessInfo>,
-    pub total_count: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub warnings: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -222,8 +215,6 @@ pub struct ContainerState {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub volumes: Option<Vec<VolumeInfo>>,
     pub runtime: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub warnings: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

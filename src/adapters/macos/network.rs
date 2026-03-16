@@ -30,9 +30,7 @@ pub async fn observe(
         internet_reachable: None,
         proxy_enabled: None,
         vpns: None,
-        warnings: None,
     };
-    let mut warnings = Vec::new();
 
     let ifconfig = exec("ifconfig", &[], ExecOpts::default()).await?;
     state.interfaces = parse_interfaces(&ifconfig.stdout);
@@ -69,13 +67,6 @@ pub async fn observe(
     if target.is_none() {
         let ping = exec("ping", &["-c", "1", "-W", "3", "8.8.8.8"], ExecOpts::default()).await;
         state.internet_reachable = Some(ping.map(|r| r.success()).unwrap_or(false));
-        if state.internet_reachable == Some(false) {
-            warnings.push("Internet appears unreachable (ping to 8.8.8.8 failed).".into());
-        }
-    }
-
-    if !warnings.is_empty() {
-        state.warnings = Some(warnings);
     }
 
     let details = serde_json::to_value(&state)?;
@@ -663,12 +654,6 @@ fn format_network_summary(state: &NetworkState) -> String {
 
     if let Some(true) = state.proxy_enabled {
         parts.push("Web proxy enabled.".into());
-    }
-
-    if let Some(ref warnings) = state.warnings {
-        for w in warnings {
-            parts.push(format!("⚠ {w}"));
-        }
     }
 
     parts.join(" ")

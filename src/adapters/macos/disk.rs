@@ -19,9 +19,7 @@ pub async fn observe(
 
     let mut state = DiskState {
         mounts: vec![],
-        warnings: None,
     };
-    let mut warnings = Vec::new();
 
     if scopes.contains(&"space") || scopes.contains(&"mounts") {
         let result = exec("df", &["-h"], ExecOpts::default()).await?;
@@ -31,30 +29,6 @@ pub async fn observe(
         let result_bytes = exec("df", &["-k"], ExecOpts::default()).await?;
         enrich_byte_counts(&mut state.mounts, &result_bytes.stdout);
 
-        // Warn on disks over 90% full
-        for mount in &state.mounts {
-            if mount.percent_used > 90.0 {
-                warnings.push(format!(
-                    "{} is {:.0}% full ({} available).",
-                    mount.path,
-                    mount.percent_used,
-                    format_bytes(mount.available_bytes),
-                ));
-            }
-        }
-    }
-
-    if scopes.contains(&"temp_usage") {
-        let result = exec_du("/tmp").await;
-        if let Some(size) = result {
-            if size > 500 * 1024 * 1024 {
-                warnings.push(format!("/tmp is using {}.", format_bytes(size)));
-            }
-        }
-    }
-
-    if !warnings.is_empty() {
-        state.warnings = Some(warnings);
     }
 
     let summary = format_disk_summary(&state);
@@ -300,12 +274,6 @@ fn format_disk_summary(state: &DiskState) -> String {
             mount.percent_used,
             format_bytes(mount.available_bytes),
         ));
-    }
-
-    if let Some(ref warnings) = state.warnings {
-        for w in warnings {
-            parts.push(format!("⚠ {w}"));
-        }
     }
 
     if parts.is_empty() {
