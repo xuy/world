@@ -12,32 +12,20 @@ This project grew out of [Noah](https://github.com/xuy/noah), an AI IT departmen
 graph TB
     System["<b>System</b><br/><i>(partially observable)</i>"]
 
-    System --- Domains
-
-    subgraph Domains [" "]
-        direction LR
-        network
-        process
-        service
-        disk
-        brew
-        pip
-        npm
-        ···
-    end
+    System --- Domains["<b>Domains</b>"]
 
     Spec["<b>spec</b><br/>schema per domain"] <--> Domains
 
-    Domains -- "observe ↓" --> Agent
-    Agent -- "act ↑" --> Domains
-    Domains -. "await ↻" .-> Domains
+    Domains -- "observe" --> Agent
+    Agent -- "act" --> Domains
+    Domains -. "await" .-> Domains
 
     subgraph Agent ["AI Agent"]
         WorldModel(["world model / belief"])
     end
 ```
 
-The agent builds a world model from structured observations. It changes state through declared verbs (`act`), and waits for conditions (`await`) instead of polling. The `spec` describes every domain's schema — what can be observed, what actions exist, what each action mutates — so the agent discovers capabilities rather than guessing.
+The agent builds a world model from structured observations. It changes state through declared verbs (`act`), and waits for conditions (`await`) instead of polling. `spec` describes every domain's schema — what can be observed, what actions exist, what each action mutates — so the agent discovers capabilities rather than guessing.
 
 ## Why not just shell commands?
 
