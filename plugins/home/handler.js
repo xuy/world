@@ -74,26 +74,9 @@ function haPost(session, path, data) {
 
 // ─── Entity classification ─────────────────────────────────────────────────
 
-function classify(entityId) {
-  const domain = entityId.split(".")[0];
-  switch (domain) {
-    case "light":
-    case "input_boolean":
-      return "light_or_switch";
-    case "switch":
-      return "light_or_switch";
-    case "climate":
-    case "input_number":
-      return "climate";
-    case "lock":
-      return "lock";
-    case "cover":
-      return "cover";
-    case "sensor":
-      return "sensor";
-    default:
-      return null;
-  }
+/** Slugify a friendly name: "Living Room Light" → "living_room_light" */
+function slugify(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 }
 
 function isLightLike(entityId, attrs) {
@@ -133,38 +116,43 @@ function isCoverLike(entityId, attrs) {
 
 const NULL_OBS = { lights: [], climate: [], sensors: [], locks: [], covers: [] };
 
-function observe() {
-  const session = loadSession();
-  if (!session) return { details: NULL_OBS };
-
+/**
+ * Fetch all HA states, classify them, and return observations with clean IDs.
+ * Also returns a slug→entityId lookup map for act resolution.
+ */
+function fetchStates(session) {
   const states = haGet(session, "/states");
-  if (!states) return { details: NULL_OBS };
+  if (!states) return { obs: NULL_OBS, lookup: {} };
 
   const lights = [];
   const climate = [];
   const sensors = [];
   const locks = [];
   const covers = [];
+  const lookup = {}; // slug → HA entity_id
 
   for (const entity of states) {
-    const id = entity.entity_id;
+    const entityId = entity.entity_id;
     const attrs = entity.attributes || {};
-    const name = attrs.friendly_name || id;
-    const domain = id.split(".")[0];
+    const name = attrs.friendly_name || entityId;
+    const id = slugify(name);
+    const domain = entityId.split(".")[0];
 
-    if (isLockLike(id, attrs)) {
+    lookup[id] = entityId;
+
+    if (isLockLike(entityId, attrs)) {
       locks.push({
         id,
         name,
         state: entity.state === "on" || entity.state === "locked" ? "locked" : "unlocked",
       });
-    } else if (isCoverLike(id, attrs)) {
+    } else if (isCoverLike(entityId, attrs)) {
       covers.push({
         id,
         name,
         state: entity.state === "on" || entity.state === "open" ? "open" : "closed",
       });
-    } else if (isLightLike(id, attrs)) {
+    } else if (isLightLike(entityId, attrs)) {
       lights.push({
         id,
         name,
@@ -178,8 +166,7 @@ function observe() {
         unit: attrs.unit_of_measurement || null,
       });
     } else if (domain === "sensor") {
-      // Skip internal/backup sensors
-      if (id.includes("backup") || id.includes("sun_next")) continue;
+      if (entityId.includes("backup") || entityId.includes("sun_next")) continue;
       sensors.push({
         id,
         name,
@@ -189,7 +176,20 @@ function observe() {
     }
   }
 
-  return { details: { lights, climate, sensors, locks, covers } };
+  return { obs: { lights, climate, sensors, locks, covers }, lookup };
+}
+
+function observe() {
+  const session = loadSession();
+  if (!session) return { details: NULL_OBS };
+  const { obs } = fetchStates(session);
+  return { details: obs };
+}
+
+/** Resolve a slug target to an HA entity_id. */
+function resolveTarget(session, target) {
+  const { lookup } = fetchStates(session);
+  return lookup[target] || null;
 }
 
 // ─── Act helpers ───────────────────────────────────────────────────────────
@@ -252,23 +252,28 @@ function act(handler, target, params, dryRun) {
   const session = loadSession();
   if (!session) return { error: { code: "no_session", message: "Not connected. Use: world act home open <url> token=<token>" } };
 
-  if (!target) return { error: { code: "missing_target", message: "Entity ID required" } };
+  if (!target) return { error: { code: "missing_target", message: "Target required (e.g. living_room_light)" } };
 
-  if (dryRun) {
-    return { details: { dry_run: true, would_run: `${handler} on ${target}` } };
+  // Resolve slug → HA entity_id
+  const entityId = resolveTarget(session, target);
+  if (!entityId) {
+    return { error: { code: "unknown_target", message: `Unknown target '${target}'. Use 'world observe home' to see available targets.` } };
   }
 
-  const service = resolveService(target, handler);
+  if (dryRun) {
+    return { details: { dry_run: true, would_run: `${handler} on ${target} (${entityId})` } };
+  }
+
+  const service = resolveService(entityId, handler);
   if (!service) {
     return { error: { code: "unsupported", message: `Cannot ${handler} on ${target}` } };
   }
 
-  const data = { entity_id: target };
+  const data = { entity_id: entityId };
   if (handler === "set_value") {
     const temp = (params || {}).temperature;
     if (!temp) return { error: { code: "missing_param", message: "temperature= required for set" } };
-    // input_number uses "value", climate uses "temperature"
-    if (target.startsWith("input_number.")) {
+    if (entityId.startsWith("input_number.")) {
       data.value = parseFloat(temp);
     } else {
       data.temperature = parseFloat(temp);
