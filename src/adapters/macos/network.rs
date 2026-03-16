@@ -3,7 +3,7 @@ use serde_json::json;
 
 use crate::contracts::{Risk, UnifiedResult};
 use crate::execution::{exec, exec_shell, ExecOpts};
-use crate::schemas::{InterfaceType, NetworkInterface, NetworkState};
+use crate::schemas::{InterfaceType, NetworkInterface, NetworkState, VpnConnection, VpnStatus};
 
 pub async fn observe(
     target: Option<&str>,
@@ -20,6 +20,7 @@ pub async fn observe(
         Some("dns") => return observe_aspect_dns().await,
         Some("internet_status") => return observe_aspect_internet().await,
         Some("proxy") => return observe_aspect_proxy().await,
+        Some("vpn") => return observe_aspect_vpn().await,
         _ => {} // "interfaces", specific name, or None — all need interface data
     }
 
@@ -28,7 +29,7 @@ pub async fn observe(
         interfaces: vec![],
         internet_reachable: None,
         proxy_enabled: None,
-        vpn_present: None,
+        vpns: None,
         warnings: None,
     };
     let mut warnings = Vec::new();
@@ -44,13 +45,11 @@ pub async fn observe(
     let dns = exec("scutil", &["--dns"], ExecOpts::default()).await?;
     enrich_dns_info(&mut state, &dns.stdout);
 
-    state.vpn_present = Some(
-        state.interfaces.iter().any(|i| {
-            matches!(i.iface_type, Some(InterfaceType::Vpn))
-                || i.name.starts_with("utun")
-                || i.name.starts_with("ipsec")
-        }),
-    );
+    // Rich VPN observation via scutil --nc
+    let vpns = observe_vpns().await;
+    if !vpns.is_empty() {
+        state.vpns = Some(vpns);
+    }
 
     // If target is a specific name (not "interfaces" and not None), filter to it
     if let Some(t) = target {
@@ -111,6 +110,17 @@ async fn observe_aspect_internet() -> Result<UnifiedResult> {
         if reachable { "Internet is reachable." } else { "Internet appears unreachable." },
         json!({"internet_reachable": reachable}),
     ))
+}
+
+async fn observe_aspect_vpn() -> Result<UnifiedResult> {
+    let vpns = observe_vpns().await;
+    let summary = if vpns.is_empty() {
+        "No VPN configurations found.".to_string()
+    } else {
+        let connected = vpns.iter().filter(|v| matches!(v.status, VpnStatus::Connected)).count();
+        format!("{} VPN(s) configured, {} connected.", vpns.len(), connected)
+    };
+    Ok(UnifiedResult::ok(summary, json!({"vpns": vpns})))
 }
 
 async fn observe_aspect_proxy() -> Result<UnifiedResult> {
@@ -278,6 +288,233 @@ pub async fn verify_port_open(host: &str, port: u16, timeout_sec: u32) -> Result
     ))
 }
 
+// ── VPN observation ─────────────────────────────────────────────────────
+
+/// Observe all VPN connections via scutil --nc.
+/// Returns structured VPN info: name, status, protocol, addresses, DNS, uptime.
+async fn observe_vpns() -> Vec<VpnConnection> {
+    let nc_list = match exec("scutil", &["--nc", "list"], ExecOpts::default()).await {
+        Ok(r) => r.stdout,
+        Err(_) => return vec![],
+    };
+
+    let mut vpns = Vec::new();
+
+    for line in nc_list.lines().skip(1) {
+        // Format: * (Status) UUID TYPE "Name" [Protocol:xxx]
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        let (status_str, rest) = parse_nc_list_line(line);
+
+        // Extract name from quotes
+        let name = match rest.find('"') {
+            Some(start) => match rest[start + 1..].find('"') {
+                Some(end) => rest[start + 1..start + 1 + end].to_string(),
+                None => continue,
+            },
+            None => continue,
+        };
+
+        // Extract protocol from [VPN:xxx] or [com.xxx]
+        let protocol = extract_protocol(rest);
+
+        let status = match status_str {
+            "Connected" => VpnStatus::Connected,
+            "Disconnected" => VpnStatus::Disconnected,
+            "Connecting" => VpnStatus::Connecting,
+            "Disconnecting" => VpnStatus::Disconnecting,
+            _ => VpnStatus::Unknown,
+        };
+
+        // Get detailed info for connected VPNs
+        let mut vpn = VpnConnection {
+            name: name.clone(),
+            status,
+            protocol,
+            local_address: None,
+            server_address: None,
+            interface: None,
+            dns_servers: None,
+            search_domains: None,
+            connect_time_sec: None,
+        };
+
+        if matches!(vpn.status, VpnStatus::Connected) {
+            enrich_vpn_details(&mut vpn).await;
+        }
+
+        vpns.push(vpn);
+    }
+
+    vpns
+}
+
+/// Parse a line from `scutil --nc list` into (status, rest).
+fn parse_nc_list_line(line: &str) -> (&str, &str) {
+    // Line format: "* (Connected)  UUID ..." or "  (Disconnected)  UUID ..."
+    if let Some(start) = line.find('(') {
+        if let Some(end) = line.find(')') {
+            let status = &line[start + 1..end];
+            let rest = &line[end + 1..];
+            return (status, rest);
+        }
+    }
+    ("Unknown", line)
+}
+
+/// Extract protocol from the [VPN:xxx] bracket at end of nc list line.
+fn extract_protocol(line: &str) -> Option<String> {
+    // [VPN:io.tailscale.ipn.macsys] → "Tailscale"
+    // [VPN:com.wireguard.macos] → "WireGuard"
+    // [VPN:L2TP] → "L2TP"
+    // [VPN:IKEv2] → "IKEv2"
+    // [VPN:com.cisco.anyconnect] → "Cisco AnyConnect"
+    let bracket_start = line.rfind('[')?;
+    let bracket_end = line.rfind(']')?;
+    let inner = &line[bracket_start + 1..bracket_end];
+
+    // Strip "VPN:" prefix if present
+    let proto_raw = inner.strip_prefix("VPN:").unwrap_or(inner);
+
+    // Map known bundle IDs to friendly names
+    let friendly = match proto_raw {
+        s if s.contains("tailscale") => "Tailscale",
+        s if s.contains("wireguard") => "WireGuard",
+        s if s.contains("cisco") || s.contains("anyconnect") => "Cisco AnyConnect",
+        s if s.contains("openvpn") || s.contains("tunnelblick") => "OpenVPN",
+        s if s.contains("mullvad") => "Mullvad",
+        s if s.contains("nordvpn") => "NordVPN",
+        s if s.contains("expressvpn") => "ExpressVPN",
+        s if s.contains("cloudflare") || s.contains("warp") => "Cloudflare WARP",
+        _ => proto_raw,
+    };
+    Some(friendly.to_string())
+}
+
+/// Fetch detailed status for a connected VPN via scutil --nc status.
+async fn enrich_vpn_details(vpn: &mut VpnConnection) {
+    let result = match exec(
+        "scutil",
+        &["--nc", "status", &vpn.name],
+        ExecOpts::default(),
+    )
+    .await
+    {
+        Ok(r) => r.stdout,
+        Err(_) => return,
+    };
+
+    // Parse the plist-like output from scutil --nc status.
+    // The output uses nested dictionaries/arrays with indentation.
+    // We track depth to know when a top-level section ends.
+    let mut dns_servers = Vec::new();
+    let mut search_domains = Vec::new();
+    let mut section_stack: Vec<&str> = Vec::new();
+
+    for line in result.lines() {
+        let trimmed = line.trim();
+
+        // Track brace depth
+        if trimmed == "}" {
+            section_stack.pop();
+            continue;
+        }
+
+        // New named section with opening brace
+        if trimmed.contains(" : <") && trimmed.ends_with('{') {
+            let key = trimmed.split(':').next().unwrap_or("").trim();
+            let tag = match key {
+                "IPv4" => "ipv4",
+                "Addresses" if section_stack.last() == Some(&"ipv4") => "ipv4_addr",
+                "DNSServers" => "dns",
+                "DNSSearchDomains" => "search",
+                "VPN" => "vpn",
+                _ => "_",
+            };
+            section_stack.push(tag);
+            continue;
+        }
+
+        let current = section_stack.last().copied().unwrap_or("");
+
+        // Extract values based on current section
+        match current {
+            "ipv4" => {
+                if trimmed.starts_with("InterfaceName :") {
+                    vpn.interface = extract_value(trimmed);
+                } else if trimmed.starts_with("ServerAddress :") {
+                    let addr = extract_value(trimmed);
+                    if addr.as_deref() != Some("127.0.0.1") {
+                        vpn.server_address = addr;
+                    }
+                }
+            }
+            "ipv4_addr" => {
+                if let Some(addr) = extract_array_value(trimmed) {
+                    vpn.local_address = Some(addr);
+                }
+            }
+            "dns" => {
+                if let Some(server) = extract_array_value(trimmed) {
+                    dns_servers.push(server);
+                }
+            }
+            "search" => {
+                if let Some(domain) = extract_array_value(trimmed) {
+                    search_domains.push(domain);
+                }
+            }
+            "vpn" => {
+                if trimmed.starts_with("ConnectTime :") {
+                    if let Some(val) = extract_value(trimmed) {
+                        vpn.connect_time_sec = val.parse::<u64>().ok();
+                    }
+                } else if trimmed.starts_with("RemoteAddress :") {
+                    let addr = extract_value(trimmed);
+                    if addr.as_deref() != Some("127.0.0.1") {
+                        vpn.server_address = vpn.server_address.clone().or(addr);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    if !dns_servers.is_empty() {
+        vpn.dns_servers = Some(dns_servers);
+    }
+    if !search_domains.is_empty() {
+        vpn.search_domains = Some(search_domains);
+    }
+}
+
+/// Extract value from "Key : Value" format.
+fn extract_value(line: &str) -> Option<String> {
+    let val = line.split(':').nth(1)?.trim().to_string();
+    if val.is_empty() || val.starts_with('<') {
+        None
+    } else {
+        Some(val)
+    }
+}
+
+/// Extract value from array entry like "0 : 100.100.100.100".
+fn extract_array_value(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    // Match lines like "0 : value" (array entries)
+    let parts: Vec<&str> = trimmed.splitn(2, ':').collect();
+    if parts.len() == 2 && parts[0].trim().parse::<u32>().is_ok() {
+        let val = parts[1].trim().to_string();
+        if !val.is_empty() && !val.starts_with('<') {
+            return Some(val);
+        }
+    }
+    None
+}
+
 // ── Parsing helpers ──────────────────────────────────────────────────────
 
 fn parse_interfaces(ifconfig_output: &str) -> Vec<NetworkInterface> {
@@ -407,8 +644,21 @@ fn format_network_summary(state: &NetworkState) -> String {
         parts.push("Internet NOT reachable.".into());
     }
 
-    if let Some(true) = state.vpn_present {
-        parts.push("VPN adapter detected.".into());
+    if let Some(ref vpns) = state.vpns {
+        for vpn in vpns {
+            let proto = vpn.protocol.as_deref().unwrap_or("VPN");
+            let status = match vpn.status {
+                VpnStatus::Connected => {
+                    let addr = vpn.local_address.as_deref().unwrap_or("?");
+                    format!("{proto} ({}) connected, IP {addr}", vpn.name)
+                }
+                VpnStatus::Disconnected => format!("{proto} ({}) disconnected", vpn.name),
+                VpnStatus::Connecting => format!("{proto} ({}) connecting...", vpn.name),
+                VpnStatus::Disconnecting => format!("{proto} ({}) disconnecting...", vpn.name),
+                VpnStatus::Unknown => format!("{proto} ({}) unknown", vpn.name),
+            };
+            parts.push(status);
+        }
     }
 
     if let Some(true) = state.proxy_enabled {

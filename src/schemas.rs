@@ -13,7 +13,7 @@ pub struct NetworkState {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub proxy_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub vpn_present: Option<bool>,
+    pub vpns: Option<Vec<VpnConnection>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub warnings: Option<Vec<String>>,
 }
@@ -40,6 +40,37 @@ pub enum InterfaceType {
     Vpn,
     Loopback,
     Other,
+}
+
+/// Normalized VPN connection state.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VpnConnection {
+    pub name: String,
+    pub status: VpnStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub local_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub server_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dns_servers: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub search_domains: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connect_time_sec: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VpnStatus {
+    Connected,
+    Disconnected,
+    Connecting,
+    Disconnecting,
+    Unknown,
 }
 
 /// Normalized service state.

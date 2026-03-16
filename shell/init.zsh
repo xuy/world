@@ -103,6 +103,7 @@ _world_observe_targets() {
   local domain="$1"
   case "$domain" in
     process)   echo "top_cpu top_mem" ;;
+    network)   echo "dns internet_status proxy vpn" ;;
     disk)      echo "temp_usage" ;;
     container) echo "images volumes" ;;
   esac

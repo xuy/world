@@ -30,9 +30,22 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                         "type": "ethernet | wifi | vpn | loopback | other"
                     }
                 },
+                "vpns": {
+                    "type": "array",
+                    "item": {
+                        "name": "string",
+                        "status": "connected | disconnected | connecting | disconnecting",
+                        "protocol": "string | null",
+                        "local_address": "string | null",
+                        "server_address": "string | null",
+                        "interface": "string | null",
+                        "dns_servers": ["string"],
+                        "search_domains": ["string"],
+                        "connect_time_sec": "integer | null"
+                    }
+                },
                 "internet_reachable": "bool | null",
                 "proxy_enabled": "bool | null",
-                "vpn_present": "bool | null",
                 "warnings": ["string"]
             },
             "actions": [
