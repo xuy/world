@@ -69,6 +69,9 @@ world act browser open url=https://example.com
 
 world act browser close
 # → { "url": null, "title": null, "elements": [], "snapshot": null }
+
+world await browser loaded --timeout 10
+# blocks until a page is loaded
 ```
 
 ### sample
@@ -96,6 +99,7 @@ Fields that vary become `{mean, min, max, delta, rate_per_sec}`. Constant fields
 | **printer** | Printers + status | clear, restart, set, reset |
 | **log** | Recent errors | *(read-only)* |
 | **browser** *(session)* | Page URL + accessibility tree | open, close, click, fill, select, hover, scroll, press, eval |
+| **ssh** *(session)* | Remote host info + disk usage | open, close, exec |
 
 Package managers are separate domains (brew, pip, npm) rather than a single "package" abstraction, because they have different scopes (system, virtualenv, node_modules) and the handler should use the runtime it observes.
 

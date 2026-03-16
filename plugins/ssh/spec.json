@@ -1,0 +1,27 @@
+{
+  "domain": "ssh",
+  "session": true,
+  "observations": {
+    "host": "string | null",
+    "hostname": "string | null",
+    "uptime": "string | null",
+    "load_average": "string | null",
+    "disk_usage": {
+      "type": "array",
+      "item": {
+        "filesystem": "string",
+        "size": "string",
+        "used": "string",
+        "available": "string",
+        "percent_used": "string",
+        "mount": "string"
+      }
+    },
+    "os": "string | null"
+  },
+  "actions": [
+    { "verbs": ["open"],  "mutates": ["ssh.*"], "args": { "host": { "type": "string", "description": "user@hostname or hostname" } }, "description": "Connect to SSH host" },
+    { "verbs": ["close"], "mutates": ["ssh.*"], "description": "Disconnect SSH session" },
+    { "verbs": ["exec"],  "mutates": ["ssh.*"], "args": { "cmd": { "type": "string", "description": "Command to run on remote host" } }, "description": "Run command on remote host" }
+  ]
+}

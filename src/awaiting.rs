@@ -21,6 +21,7 @@ use crate::adapters::Platform;
 use crate::contracts::verify::VerifyCheck;
 use crate::contracts::UnifiedResult;
 use crate::domains;
+use crate::plugin::DomainPlugin;
 
 // ─── Condition resolution ───────────────────────────────────────────────────
 
@@ -306,6 +307,127 @@ async fn poll_until(
         }
 
         // Exponential backoff
+        tokio::time::sleep(std::time::Duration::from_millis(interval)).await;
+        interval = (interval * 2).min(opts.max_interval_ms);
+    }
+}
+
+// ─── Plugin conditions ─────────────────────────────────────────────────────
+
+/// A condition that can be checked against a plugin's observation result.
+///
+/// Plugin domains (browser, ssh, etc.) define conditions that are evaluated
+/// by polling observe and checking the result. This avoids extending the
+/// native VerifyCheck enum for every plugin.
+pub enum PluginCondition {
+    /// True when a field in details is non-null and non-empty.
+    FieldPresent(&'static str),
+    /// True when details.field contains the target string.
+    FieldContains(&'static str),
+}
+
+impl PluginCondition {
+    /// Check whether the condition holds for the given observation result.
+    fn check(&self, details: &Value, target: Option<&str>) -> bool {
+        match self {
+            PluginCondition::FieldPresent(field) => {
+                details.get(field).is_some_and(|v| !v.is_null() && v.as_str() != Some(""))
+            }
+            PluginCondition::FieldContains(field) => {
+                let Some(needle) = target else { return false };
+                details
+                    .get(field)
+                    .and_then(|v| v.as_str())
+                    .is_some_and(|s| s.contains(needle))
+            }
+        }
+    }
+}
+
+/// Resolve a plugin condition by domain and condition name.
+/// Returns None if the condition is not recognized.
+pub fn resolve_plugin_condition(domain: &str, condition: &str) -> Option<PluginCondition> {
+    match (domain, condition) {
+        // Browser
+        ("browser", "loaded") => Some(PluginCondition::FieldPresent("url")),
+        ("browser", "title_contains") => Some(PluginCondition::FieldContains("title")),
+
+        // SSH
+        ("ssh", "connected") => Some(PluginCondition::FieldPresent("host")),
+
+        _ => None,
+    }
+}
+
+/// List valid plugin conditions for a domain.
+pub fn plugin_conditions_for(domain: &str) -> &'static [&'static str] {
+    match domain {
+        "browser" => &["loaded", "title_contains"],
+        "ssh" => &["connected"],
+        _ => &[],
+    }
+}
+
+/// Poll a plugin's observe until a condition holds, with exponential backoff.
+pub async fn await_plugin(
+    plugin: &dyn DomainPlugin,
+    condition: PluginCondition,
+    condition_name: &str,
+    target: Option<&str>,
+    opts: AwaitOpts,
+) -> Result<UnifiedResult> {
+    use serde_json::json;
+    use std::time::Instant;
+
+    let start = Instant::now();
+    let deadline = std::time::Duration::from_secs(opts.timeout_sec as u64);
+    let mut interval = opts.initial_interval_ms;
+    let mut polls = 0u32;
+
+    loop {
+        polls += 1;
+
+        let result = plugin.observe(None, None, None).await?;
+
+        if let Some(details) = &result.details {
+            if condition.check(details, target) {
+                let elapsed_ms = start.elapsed().as_millis() as u64;
+                return Ok(UnifiedResult::ok(
+                    format!(
+                        "Condition '{condition_name}' met (awaited {elapsed_ms}ms, {polls} polls)."
+                    ),
+                    json!({
+                        "check": condition_name,
+                        "target": target,
+                        "passed": true,
+                        "mechanism": "polling",
+                        "elapsed_ms": elapsed_ms,
+                        "polls": polls,
+                        "details": details,
+                    }),
+                ));
+            }
+        }
+
+        if start.elapsed() >= deadline {
+            let elapsed_ms = start.elapsed().as_millis() as u64;
+            return Ok(UnifiedResult::ok(
+                format!(
+                    "Timed out after {}s waiting for '{condition_name}' ({polls} polls).",
+                    opts.timeout_sec
+                ),
+                json!({
+                    "check": condition_name,
+                    "target": target,
+                    "passed": false,
+                    "timeout": true,
+                    "mechanism": "polling",
+                    "elapsed_ms": elapsed_ms,
+                    "polls": polls,
+                }),
+            ));
+        }
+
         tokio::time::sleep(std::time::Duration::from_millis(interval)).await;
         interval = (interval * 2).min(opts.max_interval_ms);
     }

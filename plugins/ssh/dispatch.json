@@ -1,0 +1,7 @@
+{
+  "entries": [
+    { "target": "", "verb": "open",  "handler": "connect",    "mutates": ["ssh.*"], "default_arg": "host" },
+    { "target": "", "verb": "close", "handler": "disconnect", "mutates": ["ssh.*"] },
+    { "target": "", "verb": "exec",  "handler": "exec",       "mutates": ["ssh.*"], "default_arg": "cmd" }
+  ]
+}

@@ -247,7 +247,7 @@ pub async fn run(cli: Cli) -> ExitCode {
             } else {
                 (None, target_or_condition)
             };
-            run_await(mode, platform, &domain, &cond, target, timeout).await
+            run_await(&registry, mode, platform, &domain, &cond, target, timeout).await
         }
 
         Command::Sample {
@@ -475,6 +475,7 @@ async fn run_act(
 // ─── Await ──────────────────────────────────────────────────────────────────
 
 async fn run_await(
+    registry: &PluginRegistry,
     mode: OutputMode,
     platform: Platform,
     domain: &str,
@@ -484,58 +485,95 @@ async fn run_await(
 ) -> ExitCode {
     use crate::awaiting;
 
-    let check = match awaiting::resolve_condition(domain, condition) {
-        Some(c) => c,
-        None => {
-            let conditions = awaiting::conditions_for(domain);
-            let msg = if conditions.is_empty() {
-                format!("Unknown domain '{domain}' or no conditions available.")
-            } else {
-                format!(
-                    "Unknown condition '{condition}' for domain '{domain}'.\nAvailable: {}",
-                    conditions.join(", ")
-                )
-            };
-            let r = UnifiedResult::err("invalid_condition", msg);
-            format_result(mode, &r);
-            return ExitCode::from(1);
-        }
-    };
+    // Try native condition first
+    if let Some(check) = awaiting::resolve_condition(domain, condition) {
+        let opts = awaiting::AwaitOpts {
+            timeout_sec,
+            ..Default::default()
+        };
 
-    let opts = awaiting::AwaitOpts {
-        timeout_sec,
-        ..Default::default()
-    };
-
-    match awaiting::await_condition(
-        platform,
-        check,
-        target.as_deref(),
-        None,
-        opts,
-    )
-    .await
-    {
-        Ok(r) => {
-            let passed = r
-                .details
-                .as_ref()
-                .and_then(|d| d.get("passed"))
-                .and_then(|p| p.as_bool())
-                .unwrap_or(false);
-
-            format_result(mode, &r);
-            if passed {
-                ExitCode::from(0)
-            } else {
-                ExitCode::from(1) // timeout or condition not met
+        return match awaiting::await_condition(
+            platform,
+            check,
+            target.as_deref(),
+            None,
+            opts,
+        )
+        .await
+        {
+            Ok(r) => await_exit_code(mode, &r),
+            Err(e) => {
+                let r = UnifiedResult::err("await_error", e.to_string());
+                format_result(mode, &r);
+                ExitCode::from(1)
             }
-        }
-        Err(e) => {
-            let r = UnifiedResult::err("await_error", e.to_string());
-            format_result(mode, &r);
-            ExitCode::from(1)
-        }
+        };
+    }
+
+    // Try plugin condition (browser, ssh, etc.)
+    if let Some(plugin_cond) = awaiting::resolve_plugin_condition(domain, condition) {
+        let plugin = match registry.get(domain) {
+            Some(p) => p,
+            None => {
+                let r = UnifiedResult::err("invalid_domain", format!("Unknown domain: {domain}"));
+                format_result(mode, &r);
+                return ExitCode::from(1);
+            }
+        };
+
+        let opts = awaiting::AwaitOpts {
+            timeout_sec,
+            ..Default::default()
+        };
+
+        return match awaiting::await_plugin(
+            plugin,
+            plugin_cond,
+            condition,
+            target.as_deref(),
+            opts,
+        )
+        .await
+        {
+            Ok(r) => await_exit_code(mode, &r),
+            Err(e) => {
+                let r = UnifiedResult::err("await_error", e.to_string());
+                format_result(mode, &r);
+                ExitCode::from(1)
+            }
+        };
+    }
+
+    // Neither native nor plugin condition matched
+    let native = awaiting::conditions_for(domain);
+    let plugin = awaiting::plugin_conditions_for(domain);
+    let all: Vec<&str> = native.iter().chain(plugin.iter()).copied().collect();
+    let msg = if all.is_empty() {
+        format!("Unknown domain '{domain}' or no conditions available.")
+    } else {
+        format!(
+            "Unknown condition '{condition}' for domain '{domain}'.\nAvailable: {}",
+            all.join(", ")
+        )
+    };
+    let r = UnifiedResult::err("invalid_condition", msg);
+    format_result(mode, &r);
+    ExitCode::from(1)
+}
+
+fn await_exit_code(mode: OutputMode, r: &UnifiedResult) -> ExitCode {
+    let passed = r
+        .details
+        .as_ref()
+        .and_then(|d| d.get("passed"))
+        .and_then(|p| p.as_bool())
+        .unwrap_or(false);
+
+    format_result(mode, r);
+    if passed {
+        ExitCode::from(0)
+    } else {
+        ExitCode::from(1)
     }
 }
 
