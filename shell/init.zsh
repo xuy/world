@@ -256,57 +256,96 @@ _world() {
   esac
 }
 
-# ─── Alias-specific completion wrappers ───────────────────────────────────────
-# When invoked as `wo <TAB>`, zsh skips the subcommand — go straight to domain.
+# ─── Alias-specific completions ───────────────────────────────────────────────
+# Each alias gets self-contained positional completion.
+# wa <TAB> → domain, wa home <TAB> → verb, etc.
 
 _world_alias_observe() {
+  local -a doms=($(_world_domains))
   _arguments -C \
+    '--since=[Time filter]:since:' \
+    '--limit=[Max results]:limit:' \
     '--json[Force JSON]' \
     '--pretty[Human-readable]' \
     '(-q --quiet)'{-q,--quiet}'[Exit code only]' \
-    '*:: :->args' \
+    "1:domain:(${doms[*]})" \
+    '2:target:->target' \
     && return
-  [[ "$state" == args ]] && _world_complete_observe
+  case "$state" in
+    target)
+      local -a targets=($(_world_observe_targets "${line[1]}"))
+      (( ${#targets} )) && _describe -t targets 'target' targets
+      ;;
+  esac
 }
 
 _world_alias_act() {
+  local -a doms=($(_world_domains))
   _arguments -C \
+    '--dry-run[Preview without executing]' \
     '--json[Force JSON]' \
     '--pretty[Human-readable]' \
     '(-q --quiet)'{-q,--quiet}'[Exit code only]' \
-    '*:: :->args' \
+    "1:domain:(${doms[*]})" \
+    '2:target or verb:->tv2' \
+    '3:verb:->tv3' \
+    '*:args:' \
     && return
-  [[ "$state" == args ]] && _world_complete_act
+  case "$state" in
+    tv2|tv3)
+      local -a verbs=($(_world_verbs "${line[1]}"))
+      (( ${#verbs} )) && _describe -t verbs 'verb' verbs
+      ;;
+  esac
 }
 
 _world_alias_spec() {
-  _arguments -C \
+  local -a doms=($(_world_domains))
+  _arguments \
+    '--core[Core only, no add-ons]' \
     '--json[Force JSON]' \
     '--pretty[Human-readable]' \
     '(-q --quiet)'{-q,--quiet}'[Exit code only]' \
-    '*:: :->args' \
-    && return
-  [[ "$state" == args ]] && _world_complete_spec
+    "1:domain:(${doms[*]})"
 }
 
 _world_alias_await() {
+  local -a doms=($(_world_domains))
   _arguments -C \
+    '--timeout=[Max seconds]:timeout:' \
     '--json[Force JSON]' \
     '--pretty[Human-readable]' \
     '(-q --quiet)'{-q,--quiet}'[Exit code only]' \
-    '*:: :->args' \
+    "1:domain:(${doms[*]})" \
+    '2:target or condition:->tc2' \
+    '3:condition:->tc3' \
     && return
-  [[ "$state" == args ]] && _world_complete_await
+  case "$state" in
+    tc2|tc3)
+      local -a conds=($(_world_conditions "${line[1]}"))
+      (( ${#conds} )) && _describe -t conditions 'condition' conds
+      ;;
+  esac
 }
 
 _world_alias_sample() {
+  local -a doms=($(_world_domains))
   _arguments -C \
+    '--count=[Number of samples]:count:' \
+    '--interval=[Interval]:interval:' \
+    '--limit=[Max results]:limit:' \
     '--json[Force JSON]' \
     '--pretty[Human-readable]' \
     '(-q --quiet)'{-q,--quiet}'[Exit code only]' \
-    '*:: :->args' \
+    "1:domain:(${doms[*]})" \
+    '2:target:->target' \
     && return
-  [[ "$state" == args ]] && _world_complete_sample
+  case "$state" in
+    target)
+      local -a targets=($(_world_observe_targets "${line[1]}"))
+      (( ${#targets} )) && _describe -t targets 'target' targets
+      ;;
+  esac
 }
 
 compdef _world world
