@@ -1,57 +1,32 @@
 # world
 
-`world` is a contrarian tool that gives AI agents a proper interface to interact with the world. The fundamental model is to treat the world as a partially observable environment — agents observe what they can, act on what they're allowed to, and maintain their own internal belief and world models from the observations.
+`world` gives AI agents a structured interface to observe and act on system state.
 
-## Key Concepts
+The motivation is simple: agents that manage real systems — diagnosing why a service is down, checking what's using disk, restarting a container — need to interact with the OS. Today they do this by generating shell commands and parsing terminal output. This is fragile, unscoped, and impossible to constrain safely.
 
-### Domain
+`world` treats the system as a partially observable environment. Agents observe structured state, act through a finite set of declared verbs, and await conditions instead of polling. Every action declares what it mutates. A compiled-in capability ceiling limits what any given binary can do, regardless of what the agent asks for.
 
-A domain is a slice of the world that can be observed and acted on. Each domain declares what state is observable, what actions are available, and what conditions can be awaited.
+This project grew out of [Noah](https://github.com/xuy/noah), an AI IT department for small businesses, where the agent needs to observe and manage machines on behalf of non-technical users.
 
-The built-in domains cover system state on macOS — processes, networks, containers, services, disks, packages, printers, logs — but a domain can be anything: a robot arm, a phone, a cloud API, a database. If it has state and actions, it's a domain.
+## Why not just shell commands?
 
-### observe
+An agent with shell access can do anything — that's the problem. `world` is designed around three constraints:
 
-Read state. Returns structured, normalized data — the agent never parses raw command output.
+1. **Structured observations.** `world observe network --json` returns a schema, not terminal output. The agent never has to parse `ifconfig` or `netstat`. Every domain returns the same shape: `{details: {...}}`.
 
-```bash
-world observe process top_cpu --limit 5
-world observe network interfaces
-world observe container images
-```
+2. **Declared mutations.** Every action says what observation paths it modifies (`mutates: ["network.interfaces"]`). This is a fact about the action, not a policy judgment.
 
-Call with just a domain to discover what's available:
+3. **Structural safety.** The binary has a compiled-in capability ceiling — a set of observation schema paths it is allowed to mutate. An agent given a binary compiled with `CEILING: &["network.*"]` literally cannot kill processes or uninstall packages. No flag overrides this. To change it, recompile.
 
-```bash
-world observe network
-```
+The combination means you can hand an agent a world binary and reason about what it can and cannot do, which is not possible with `bash`.
 
-### act
+## Concepts
 
-Change state. A finite verb on a known target.
+### Domains
 
-```bash
-world act network dns_cache reset
-world act service nginx restart
-world act process 5678 kill
-world act container my-nginx enable
-```
+A domain is a slice of the world that can be observed and acted on. Built-in domains cover macOS system state — processes, networks, containers, services, disks, printers, logs. External plugins extend this to package managers (brew, pip, npm) and anything else with state and actions.
 
-### await
-
-Block until a condition becomes true. This is the link between act and observe — instead of polling in a retry loop, the agent declares what it's waiting for.
-
-```bash
-world await process stopped 5678
-world await container healthy my-nginx
-world await network host_reachable google.com --timeout 30
-```
-
-Uses OS-native event mechanisms where available (kqueue `EVFILT_PROC` for process exit — microsecond notification). Falls back to polling with exponential backoff. Always has a timeout.
-
-## Examples
-
-### Diagnose and fix
+### observe → act → await
 
 ```bash
 # What's using CPU?
@@ -60,68 +35,72 @@ world observe process top_cpu --limit 5
 # Kill the offender
 world act process 5678 kill
 
-# Confirm it's dead
+# Confirm it's gone
 world await process stopped 5678
 ```
 
-### Observe over time
+`observe` reads structured state. `act` changes it through a declared verb. `await` blocks until a condition holds, using OS-native events where available (kqueue for process exit) and falling back to exponential backoff polling.
 
-A single observe is a snapshot. For ephemeral quantities like CPU%, one snapshot is nearly useless. `sample` takes repeated observations and reduces them:
+### sample
+
+A single observation is a snapshot. For quantities like CPU%, one snapshot is nearly useless. `sample` takes repeated observations and reduces them statistically:
 
 ```bash
 world sample process top_cpu --limit 5 --count 5 --interval 2s
 ```
 
-Fields that vary become statistics (`cpu_percent: {mean: 42.3, delta: 2.1, rate_per_sec: 0.5}`). Constant fields stay as scalars (`pid: 415`).
+Fields that vary become `{mean, min, max, delta, rate_per_sec}`. Constant fields stay as scalars.
 
-### Containers
+### spec
 
-```bash
-world observe container
-world act container my-nginx restart
-world await container healthy my-nginx
-```
-
-Auto-detects Docker or Podman. Degrades gracefully when neither is installed.
-
-### Network
+Every domain declares its schema — what can be observed, what actions exist, what each action mutates. Agents use this for discovery instead of guessing.
 
 ```bash
-world observe network interfaces
-world act network dns_cache reset
-world await network dns_resolves google.com
-```
-
-### What's listening?
-
-```bash
-world observe process listening_ports
+world spec              # all domains
+world spec network      # one domain
 ```
 
 ## Domains
 
-| Domain | Targets | Act |
-|--------|---------|-----|
-| **process** | *(default: top by CPU)*, top_cpu, top_memory, processes, listening_ports, `<pid>`, `<name>`, `<pid>/tree`, `<pid>/open_files` | kill_graceful, kill_force, set_priority |
-| **network** | *(default: all)*, interfaces, dns, gateway, internet_status | flush_dns, renew_dhcp, toggle_adapter, forget_wifi |
-| **container** | *(default: containers)*, images, volumes, `<name>`, `<name>/logs` | start, stop, restart, remove, pull, prune |
-| **service** | *(default: list)*, `<name>` | start, stop, restart, set_startup_mode |
-| **disk** | *(default: mounts + space)*, temp_usage | clear_temp, remove_caches |
-| **package** | *(default: list)*, `<name>` | install, uninstall, repair, update |
-| **printer** | *(default: list)*, `<name>` | clear_queue, restart_spooler, set_default |
-| **log** | *(default: recent errors)*, recent_warnings, `<subsystem>` | *(read-only)* |
+| Domain | Default observation | Actions |
+|--------|-------------------|---------|
+| **process** | Top 20 by CPU | kill, set_priority |
+| **network** | Interfaces + DNS + gateway + connectivity | flush_dns, renew_dhcp, toggle_adapter, forget_wifi |
+| **container** | Running containers | start, stop, restart, remove, pull, prune |
+| **service** | Running non-Apple services | start, stop, restart, set_startup_mode |
+| **disk** | Mounts + space usage | clear_temp, remove_caches, mount/unmount |
+| **brew** | Installed packages | install, uninstall, repair, update |
+| **pip** | Installed packages + virtualenv | install, uninstall, pin, upgrade |
+| **npm** | Project packages (or global) | install, uninstall, pin, update |
+| **printer** | Printers + status | clear_queue, restart_spooler, set_default |
+| **log** | Recent errors | *(read-only)* |
+
+Package managers are separate domains (brew, pip, npm) rather than a single "package" abstraction, because they have different scopes (system, virtualenv, node_modules) and the handler should use the runtime it observes.
 
 ## CLI
 
 ```
 world observe DOMAIN [TARGET] [--limit N] [--since T]
-world act     DOMAIN TARGET VERB [KEY=VALUE ...] [--dry-run] [--yes]
+world act     DOMAIN TARGET VERB [KEY=VALUE ...] [--dry-run]
 world await   DOMAIN CONDITION [TARGET] [--timeout N]
 world sample  DOMAIN [TARGET] [--count N] [--interval T] [--limit N]
 world spec    [DOMAIN]
 ```
 
-`--json` for agents. `--pretty` for humans (default in TTY). `-q` for exit code only.
+Output is JSON when piped and human-readable in TTY. `--json` / `--pretty` to force. `-q` for exit code only.
+
+## Extending
+
+A plugin is a directory with three files:
+
+```
+plugins/npm/
+  spec.json      # observations + actions + mutates
+  dispatch.json  # (target, verb) → handler mapping
+  handler.js     # reads JSON from stdin, writes JSON to stdout
+```
+
+The handler can be in any language (`.py` → python3, `.js` → node, `.sh` → sh, or a bare executable). The protocol is one JSON object in, one JSON object out.
 
 ## Building
 
