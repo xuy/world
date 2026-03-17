@@ -410,6 +410,32 @@ pub async fn verify_running(id: &str) -> Result<UnifiedResult> {
     ))
 }
 
+pub async fn verify_stopped(id: &str) -> Result<UnifiedResult> {
+    let runtime = detect_runtime().await.unwrap_or_else(|| "docker".into());
+    let result = exec(
+        &runtime,
+        &["inspect", "--format", "{{.State.Running}}", id],
+        ExecOpts::default(),
+    )
+    .await?;
+
+    // Stopped if inspect fails (removed) or Running == false
+    let stopped = !result.success() || result.stdout.trim() != "true";
+
+    Ok(UnifiedResult::ok(
+        if stopped {
+            format!("Container '{id}' is stopped.")
+        } else {
+            format!("Container '{id}' is still running.")
+        },
+        json!({
+            "check": "container_stopped",
+            "target": id,
+            "passed": stopped,
+        }),
+    ))
+}
+
 pub async fn verify_healthy(id: &str) -> Result<UnifiedResult> {
     let runtime = detect_runtime().await.unwrap_or_else(|| "docker".into());
     let result = exec(

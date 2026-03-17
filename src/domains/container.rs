@@ -42,6 +42,18 @@ pub async fn verify_running(
     }
 }
 
+pub async fn verify_stopped(
+    platform: Platform,
+    target: Option<&str>,
+    _timeout_sec: u32,
+) -> Result<UnifiedResult> {
+    let id = target.ok_or_else(|| anyhow::anyhow!("container ID required for container_stopped check"))?;
+    match platform {
+        Platform::MacOS => crate::adapters::macos::container::verify_stopped(id).await,
+        _ => Ok(UnifiedResult::unsupported("container_stopped")),
+    }
+}
+
 pub async fn verify_healthy(
     platform: Platform,
     target: Option<&str>,

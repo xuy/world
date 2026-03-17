@@ -42,3 +42,17 @@ pub async fn verify_healthy(
         _ => Ok(UnifiedResult::unsupported("service_healthy")),
     }
 }
+
+pub async fn verify_stopped(
+    platform: Platform,
+    target: Option<&str>,
+    _timeout_sec: u32,
+) -> Result<UnifiedResult> {
+    match platform {
+        Platform::MacOS => {
+            let name = target.ok_or_else(|| anyhow::anyhow!("service name required for service_stopped check"))?;
+            crate::adapters::macos::service::verify_stopped(name).await
+        }
+        _ => Ok(UnifiedResult::unsupported("service_stopped")),
+    }
+}

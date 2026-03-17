@@ -48,12 +48,12 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                 "proxy_enabled": "bool | null"
             },
             "actions": [
-                { "target": "dns_cache",         "verbs": ["reset"],             "mutates": ["network.interfaces"],      "description": "Flush DNS cache" },
-                { "target": "dhcp_lease",        "verbs": ["reset"],             "mutates": ["network.interfaces"],      "description": "Renew DHCP lease" },
-                { "target": "interfaces.<name>", "verbs": ["enable", "disable"], "mutates": ["network.interfaces"],      "description": "Toggle network interface" },
+                { "target": "dns_cache",         "verbs": ["reset"],             "mutates": ["network.interfaces"],      "resolves": "dns_resolves",       "description": "Flush DNS cache" },
+                { "target": "dhcp_lease",        "verbs": ["reset"],             "mutates": ["network.interfaces"],      "resolves": "internet_reachable", "description": "Renew DHCP lease" },
+                { "target": "interfaces.<name>", "verbs": ["enable", "disable"], "mutates": ["network.interfaces"],      "resolves": "internet_reachable", "description": "Toggle network interface" },
                 { "target": "wifi.<ssid>",       "verbs": ["remove"],            "mutates": ["network.interfaces"],      "description": "Forget WiFi network" },
-                { "target": "wifi",              "verbs": ["restart"],           "mutates": ["network.interfaces"],      "description": "Reconnect WiFi" },
-                { "target": "proxy",             "verbs": ["reset"],             "mutates": ["network.interfaces"],      "description": "Reset proxy settings" }
+                { "target": "wifi",              "verbs": ["restart"],           "mutates": ["network.interfaces"],      "resolves": "internet_reachable", "description": "Reconnect WiFi" },
+                { "target": "proxy",             "verbs": ["reset"],             "mutates": ["network.interfaces"],      "resolves": "internet_reachable", "description": "Reset proxy settings" }
             ]
         }),
 
@@ -69,9 +69,9 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                 "dependencies": ["string"]
             },
             "actions": [
-                { "target": "<name>",              "verbs": ["restart"],           "mutates": ["service.status"],          "description": "Restart a service" },
-                { "target": "<name>",              "verbs": ["enable"],            "mutates": ["service.status"],          "description": "Start a service" },
-                { "target": "<name>",              "verbs": ["disable"],           "mutates": ["service.status"],          "description": "Stop a service" },
+                { "target": "<name>",              "verbs": ["restart"],           "mutates": ["service.status"],          "resolves": "healthy",  "description": "Restart a service" },
+                { "target": "<name>",              "verbs": ["enable"],            "mutates": ["service.status"],          "resolves": "healthy",  "description": "Start a service" },
+                { "target": "<name>",              "verbs": ["disable"],           "mutates": ["service.status"],          "resolves": "stopped",  "description": "Stop a service" },
                 { "target": "<name>.startup_mode", "verbs": ["set"],              "mutates": ["service.startup_mode"],    "description": "Set startup mode", "args": { "mode": { "type": "string", "enum": ["auto", "manual", "disabled"] } } }
             ]
         }),
@@ -94,7 +94,8 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
             "actions": [
                 { "target": "temp",   "verbs": ["clear", "reset"], "mutates": ["disk.mounts"],             "description": "Clear temporary files" },
                 { "target": "caches", "verbs": ["clear", "reset"], "mutates": ["disk.mounts"],             "description": "Remove known large caches (brew, npm, pip)" },
-                { "target": "<path>", "verbs": ["add", "remove"],  "mutates": ["disk.mounts"],             "description": "Mount/unmount a share" }
+                { "target": "<path>", "verbs": ["add"],             "mutates": ["disk.mounts"],             "resolves": "mounted",    "description": "Mount a share" },
+                { "target": "<path>", "verbs": ["remove"],          "mutates": ["disk.mounts"],             "resolves": "unmounted",  "description": "Unmount a share" }
             ]
         }),
 
@@ -112,8 +113,8 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                 "recent_errors": ["string"]
             },
             "actions": [
-                { "target": "<name>.queue",  "verbs": ["clear"],   "mutates": ["printer.queue_jobs"],      "description": "Clear print queue" },
-                { "target": "spooler",       "verbs": ["restart"], "mutates": ["printer.status"],           "description": "Restart print spooler" },
+                { "target": "<name>.queue",  "verbs": ["clear"],   "mutates": ["printer.queue_jobs"],      "resolves": "prints",  "description": "Clear print queue" },
+                { "target": "spooler",       "verbs": ["restart"], "mutates": ["printer.status"],           "resolves": "prints",  "description": "Restart print spooler" },
                 { "target": "default",       "verbs": ["set"],     "mutates": ["printer.is_default"],       "description": "Set default printer", "args": { "name": { "type": "string", "description": "printer name" } } },
                 { "target": "<name>.driver", "verbs": ["reset"],   "mutates": ["printer.driver"],           "description": "Reinstall printer driver" }
             ]
@@ -173,8 +174,8 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                 }
             },
             "actions": [
-                { "target": "<pid>",          "verbs": ["kill"],    "mutates": ["process.processes"],       "description": "Graceful kill (SIGTERM)" },
-                { "target": "<pid>",          "verbs": ["remove"],  "mutates": ["process.processes"],       "description": "Force kill (SIGKILL)" },
+                { "target": "<pid>",          "verbs": ["kill"],    "mutates": ["process.processes"],       "resolves": "stopped",  "description": "Graceful kill (SIGTERM)" },
+                { "target": "<pid>",          "verbs": ["remove"],  "mutates": ["process.processes"],       "resolves": "stopped",  "description": "Force kill (SIGKILL)" },
                 { "target": "<pid>.priority", "verbs": ["set"],     "mutates": ["process.processes"],       "description": "Set process priority (renice)", "args": { "priority": { "type": "integer", "description": "nice value (-20 to 20)" } } }
             ]
         }),
@@ -213,9 +214,9 @@ pub fn core_spec(domain: ObserveDomain) -> Value {
                 "runtime": "docker | podman"
             },
             "actions": [
-                { "target": "<id>",     "verbs": ["enable"],  "mutates": ["container.containers"],     "description": "Start a container" },
-                { "target": "<id>",     "verbs": ["disable"], "mutates": ["container.containers"],     "description": "Stop a container" },
-                { "target": "<id>",     "verbs": ["restart"], "mutates": ["container.containers"],     "description": "Restart a container" },
+                { "target": "<id>",     "verbs": ["enable"],  "mutates": ["container.containers"],     "resolves": "running",  "description": "Start a container" },
+                { "target": "<id>",     "verbs": ["disable"], "mutates": ["container.containers"],     "resolves": "stopped",  "description": "Stop a container" },
+                { "target": "<id>",     "verbs": ["restart"], "mutates": ["container.containers"],     "resolves": "running",  "description": "Restart a container" },
                 { "target": "<id>",     "verbs": ["remove"],  "mutates": ["container.containers"],     "description": "Remove a container" },
                 { "target": "<image>",  "verbs": ["add"],     "mutates": ["container.images"],         "description": "Pull an image" },
                 { "target": "images",   "verbs": ["clear"],   "mutates": ["container.images"],         "description": "Prune unused images" },

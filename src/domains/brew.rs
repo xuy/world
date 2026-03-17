@@ -42,3 +42,17 @@ pub async fn verify_installed(
         _ => Ok(UnifiedResult::unsupported("brew_installed")),
     }
 }
+
+pub async fn verify_uninstalled(
+    platform: Platform,
+    target: Option<&str>,
+    _timeout_sec: u32,
+) -> Result<UnifiedResult> {
+    match platform {
+        Platform::MacOS => {
+            let name = target.ok_or_else(|| anyhow::anyhow!("brew package name required"))?;
+            crate::adapters::macos::brew::verify_uninstalled(name).await
+        }
+        _ => Ok(UnifiedResult::unsupported("brew_uninstalled")),
+    }
+}

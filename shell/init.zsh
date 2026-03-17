@@ -85,15 +85,17 @@ _world_conditions() {
   local -a conds
   case "$domain" in
     network)   conds=(host_reachable dns_resolves internet_reachable port_open) ;;
-    service)   conds=(healthy) ;;
+    service)   conds=(healthy stopped) ;;
     process)   conds=(running stopped port_free) ;;
-    container) conds=(running healthy image_exists volume_exists) ;;
-    disk)      conds=(writable) ;;
-    brew)      conds=(installed) ;;
+    container) conds=(running stopped healthy image_exists volume_exists) ;;
+    disk)      conds=(writable mounted unmounted) ;;
+    brew)      conds=(installed uninstalled) ;;
     printer)   conds=(prints) ;;
     browser)   conds=(loaded title_contains) ;;
     ssh)       conds=(connected) ;;
     home)      conds=(connected) ;;
+    npm)       conds=(installed) ;;
+    pip)       conds=(installed) ;;
   esac
   echo "${conds[@]}"
 }

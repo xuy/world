@@ -46,7 +46,7 @@
     }
   },
   "actions": [
-    { "verbs": ["open"],  "mutates": ["home.*"], "args": { "url": { "type": "string", "description": "HomeAssistant URL" }, "token": { "type": "string", "description": "Long-lived access token" } }, "description": "Connect to HomeAssistant instance" },
+    { "verbs": ["open"],  "mutates": ["home.*"], "resolves": "connected", "args": { "url": { "type": "string", "description": "HomeAssistant URL" }, "token": { "type": "string", "description": "Long-lived access token" } }, "description": "Connect to HomeAssistant instance" },
     { "verbs": ["close"], "mutates": ["home.*"], "description": "Disconnect from HomeAssistant" },
     { "target": "<id>", "verbs": ["enable"],  "mutates": ["home.lights", "home.covers"], "description": "Turn on light / open cover" },
     { "target": "<id>", "verbs": ["disable"], "mutates": ["home.lights", "home.covers"], "description": "Turn off light / close cover" },

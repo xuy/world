@@ -20,7 +20,7 @@
     "os": "string | null"
   },
   "actions": [
-    { "verbs": ["open"],  "mutates": ["ssh.*"], "args": { "host": { "type": "string", "description": "user@hostname or hostname" } }, "description": "Connect to SSH host" },
+    { "verbs": ["open"],  "mutates": ["ssh.*"], "resolves": "connected", "args": { "host": { "type": "string", "description": "user@hostname or hostname" } }, "description": "Connect to SSH host" },
     { "verbs": ["close"], "mutates": ["ssh.*"], "description": "Disconnect SSH session" },
     { "verbs": ["exec"],  "mutates": ["ssh.*"], "args": { "cmd": { "type": "string", "description": "Command to run on remote host" } }, "description": "Run command on remote host" }
   ]

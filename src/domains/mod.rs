@@ -77,9 +77,14 @@ pub async fn dispatch_verify(
         VerifyCheck::ProcessStopped => process::verify_stopped(platform, target, timeout_sec).await,
         VerifyCheck::PortFree => process::verify_port_free(platform, target, params, timeout_sec).await,
         VerifyCheck::ContainerRunning => container::verify_running(platform, target, timeout_sec).await,
+        VerifyCheck::ContainerStopped => container::verify_stopped(platform, target, timeout_sec).await,
         VerifyCheck::ContainerHealthy => container::verify_healthy(platform, target, timeout_sec).await,
         VerifyCheck::ImageExists => container::verify_image_exists(platform, target, timeout_sec).await,
         VerifyCheck::VolumeExists => container::verify_volume_exists(platform, target, timeout_sec).await,
+        VerifyCheck::ServiceStopped => service::verify_stopped(platform, target, timeout_sec).await,
+        VerifyCheck::BrewUninstalled => brew::verify_uninstalled(platform, target, timeout_sec).await,
+        VerifyCheck::DiskMounted => disk::verify_mounted(platform, target, timeout_sec).await,
+        VerifyCheck::DiskUnmounted => disk::verify_unmounted(platform, target, timeout_sec).await,
     }
 }
 

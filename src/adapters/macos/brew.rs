@@ -236,6 +236,24 @@ pub async fn verify_installed(name: &str) -> Result<UnifiedResult> {
     ))
 }
 
+pub async fn verify_uninstalled(name: &str) -> Result<UnifiedResult> {
+    let result = exec("brew", &["list", name], ExecOpts::default()).await?;
+    let uninstalled = !result.success();
+
+    Ok(UnifiedResult::ok(
+        if uninstalled {
+            format!("Package '{name}' is not installed.")
+        } else {
+            format!("Package '{name}' is still installed.")
+        },
+        json!({
+            "check": "package_uninstalled",
+            "target": name,
+            "passed": uninstalled,
+        }),
+    ))
+}
+
 fn parse_brew_info(info: &serde_json::Value, name: &str) -> BrewPackageState {
     let formulae = info.get("formulae").and_then(|f| f.as_array());
     if let Some(formulae) = formulae {

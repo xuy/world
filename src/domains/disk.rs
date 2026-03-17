@@ -42,3 +42,31 @@ pub async fn verify_writable(
         _ => Ok(UnifiedResult::unsupported("disk_writable")),
     }
 }
+
+pub async fn verify_mounted(
+    platform: Platform,
+    target: Option<&str>,
+    _timeout_sec: u32,
+) -> Result<UnifiedResult> {
+    match platform {
+        Platform::MacOS => {
+            let path = target.ok_or_else(|| anyhow::anyhow!("mount path required"))?;
+            crate::adapters::macos::disk::verify_mounted(path).await
+        }
+        _ => Ok(UnifiedResult::unsupported("disk_mounted")),
+    }
+}
+
+pub async fn verify_unmounted(
+    platform: Platform,
+    target: Option<&str>,
+    _timeout_sec: u32,
+) -> Result<UnifiedResult> {
+    match platform {
+        Platform::MacOS => {
+            let path = target.ok_or_else(|| anyhow::anyhow!("mount path required"))?;
+            crate::adapters::macos::disk::verify_unmounted(path).await
+        }
+        _ => Ok(UnifiedResult::unsupported("disk_unmounted")),
+    }
+}

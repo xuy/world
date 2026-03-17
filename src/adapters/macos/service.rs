@@ -256,6 +256,32 @@ pub async fn verify_healthy(name: &str, _timeout_sec: u32) -> Result<UnifiedResu
     ))
 }
 
+pub async fn verify_stopped(name: &str) -> Result<UnifiedResult> {
+    let result = exec("launchctl", &["list", name], ExecOpts::default()).await?;
+
+    // Service is stopped if launchctl list fails or no PID is found
+    let has_pid = result.success()
+        && result
+            .stdout
+            .lines()
+            .any(|l| l.contains("\"PID\"") || l.trim().starts_with("PID"));
+
+    let stopped = !has_pid;
+
+    Ok(UnifiedResult::ok(
+        if stopped {
+            format!("Service '{name}' is stopped.")
+        } else {
+            format!("Service '{name}' is still running.")
+        },
+        json!({
+            "check": "service_stopped",
+            "target": name,
+            "passed": stopped,
+        }),
+    ))
+}
+
 // ── Parsing helpers ──────────────────────────────────────────────────────
 
 fn parse_service_list(output: &str) -> Vec<ServiceState> {

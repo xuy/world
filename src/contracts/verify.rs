@@ -17,9 +17,14 @@ pub enum VerifyCheck {
     ProcessStopped,
     PortFree,
     ContainerRunning,
+    ContainerStopped,
     ContainerHealthy,
     ImageExists,
     VolumeExists,
+    ServiceStopped,
+    BrewUninstalled,
+    DiskMounted,
+    DiskUnmounted,
 }
 
 impl VerifyCheck {
@@ -37,9 +42,14 @@ impl VerifyCheck {
             Self::ProcessStopped => "process_stopped",
             Self::PortFree => "port_free",
             Self::ContainerRunning => "container_running",
+            Self::ContainerStopped => "container_stopped",
             Self::ContainerHealthy => "container_healthy",
             Self::ImageExists => "image_exists",
             Self::VolumeExists => "volume_exists",
+            Self::ServiceStopped => "service_stopped",
+            Self::BrewUninstalled => "brew_uninstalled",
+            Self::DiskMounted => "disk_mounted",
+            Self::DiskUnmounted => "disk_unmounted",
         }
     }
 }

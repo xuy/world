@@ -195,6 +195,42 @@ pub async fn verify_writable(path: &str) -> Result<UnifiedResult> {
     ))
 }
 
+pub async fn verify_mounted(path: &str) -> Result<UnifiedResult> {
+    let result = exec("df", &[path], ExecOpts::default()).await?;
+    let mounted = result.success() && result.stdout.lines().count() > 1;
+
+    Ok(UnifiedResult::ok(
+        if mounted {
+            format!("{path} is mounted.")
+        } else {
+            format!("{path} is NOT mounted.")
+        },
+        json!({
+            "check": "disk_mounted",
+            "target": path,
+            "passed": mounted,
+        }),
+    ))
+}
+
+pub async fn verify_unmounted(path: &str) -> Result<UnifiedResult> {
+    let result = exec("df", &[path], ExecOpts::default()).await?;
+    let unmounted = !result.success() || result.stdout.lines().count() <= 1;
+
+    Ok(UnifiedResult::ok(
+        if unmounted {
+            format!("{path} is unmounted.")
+        } else {
+            format!("{path} is still mounted.")
+        },
+        json!({
+            "check": "disk_unmounted",
+            "target": path,
+            "passed": unmounted,
+        }),
+    ))
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 fn parse_df_output(output: &str) -> Vec<MountPoint> {

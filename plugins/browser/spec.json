@@ -15,7 +15,7 @@
     "snapshot": "string | null"
   },
   "actions": [
-    { "verbs": ["open"],   "mutates": ["browser.*"], "args": { "url": { "type": "string" } }, "description": "Navigate to URL" },
+    { "verbs": ["open"],   "mutates": ["browser.*"], "resolves": "loaded", "args": { "url": { "type": "string" } }, "description": "Navigate to URL" },
     { "verbs": ["close"],  "mutates": ["browser.*"], "description": "Close browser session" },
     { "target": "<ref>",   "verbs": ["click"],  "mutates": ["browser.*"], "description": "Click element" },
     { "target": "<ref>",   "verbs": ["fill"],   "mutates": ["browser.elements"], "args": { "text": { "type": "string" } }, "description": "Clear and fill input" },

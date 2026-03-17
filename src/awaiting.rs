@@ -39,6 +39,7 @@ pub fn resolve_condition(domain: &str, condition: &str) -> Option<VerifyCheck> {
 
         // Service
         ("service", "healthy") => Some(VerifyCheck::ServiceHealthy),
+        ("service", "stopped") => Some(VerifyCheck::ServiceStopped),
 
         // Process
         ("process", "running") => Some(VerifyCheck::ProcessRunning),
@@ -47,15 +48,19 @@ pub fn resolve_condition(domain: &str, condition: &str) -> Option<VerifyCheck> {
 
         // Container
         ("container", "running") => Some(VerifyCheck::ContainerRunning),
+        ("container", "stopped") => Some(VerifyCheck::ContainerStopped),
         ("container", "healthy") => Some(VerifyCheck::ContainerHealthy),
         ("container", "image_exists") => Some(VerifyCheck::ImageExists),
         ("container", "volume_exists") => Some(VerifyCheck::VolumeExists),
 
         // Disk
         ("disk", "writable") => Some(VerifyCheck::DiskWritable),
+        ("disk", "mounted") => Some(VerifyCheck::DiskMounted),
+        ("disk", "unmounted") => Some(VerifyCheck::DiskUnmounted),
 
         // Brew
         ("brew", "installed") => Some(VerifyCheck::BrewInstalled),
+        ("brew", "uninstalled") => Some(VerifyCheck::BrewUninstalled),
 
         // Printer
         ("printer", "prints") => Some(VerifyCheck::PrinterPrints),
@@ -68,11 +73,11 @@ pub fn resolve_condition(domain: &str, condition: &str) -> Option<VerifyCheck> {
 pub fn conditions_for(domain: &str) -> &'static [&'static str] {
     match domain {
         "network" => &["host_reachable", "dns_resolves", "internet_reachable", "port_open"],
-        "service" => &["healthy"],
+        "service" => &["healthy", "stopped"],
         "process" => &["running", "stopped", "port_free"],
-        "container" => &["running", "healthy", "image_exists", "volume_exists"],
-        "disk" => &["writable"],
-        "brew" => &["installed"],
+        "container" => &["running", "stopped", "healthy", "image_exists", "volume_exists"],
+        "disk" => &["writable", "mounted", "unmounted"],
+        "brew" => &["installed", "uninstalled"],
         "printer" => &["prints"],
         _ => &[],
     }
@@ -363,6 +368,12 @@ pub fn resolve_plugin_condition(domain: &str, condition: &str) -> Option<PluginC
         // Home
         ("home", "connected") => Some(PluginCondition::FieldNonEmpty("lights")),
 
+        // npm
+        ("npm", "installed") => Some(PluginCondition::FieldNonEmpty("packages")),
+
+        // pip
+        ("pip", "installed") => Some(PluginCondition::FieldNonEmpty("packages")),
+
         _ => None,
     }
 }
@@ -373,6 +384,8 @@ pub fn plugin_conditions_for(domain: &str) -> &'static [&'static str] {
         "browser" => &["loaded", "title_contains"],
         "ssh" => &["connected"],
         "home" => &["connected"],
+        "npm" => &["installed"],
+        "pip" => &["installed"],
         _ => &[],
     }
 }
