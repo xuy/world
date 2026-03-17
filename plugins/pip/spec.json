@@ -17,7 +17,7 @@
     "version": "string | null"
   },
   "actions": [
-    { "target": "<name>", "verbs": ["add"],    "description": "Install a pip package",            "mutates": ["pip.installed", "pip.version"] },
+    { "target": "<name>", "verbs": ["add"],    "description": "Install a pip package",            "mutates": ["pip.installed", "pip.version"], "resolves": "installed" },
     { "target": "<name>", "verbs": ["remove"], "description": "Uninstall a pip package",          "mutates": ["pip.installed"] },
     { "target": "<name>", "verbs": ["set"],    "description": "Pin to a version",                 "mutates": ["pip.version"], "args": { "version": { "type": "string" } } },
     { "target": "all",    "verbs": ["set"],    "description": "Upgrade all outdated packages",    "mutates": ["pip.installed", "pip.version"], "args": { "version": { "type": "string", "enum": ["latest"] } } }

@@ -18,7 +18,7 @@
     "version": "string | null"
   },
   "actions": [
-    { "target": "<name>", "verbs": ["add"],    "description": "Install an npm package",           "mutates": ["npm.installed", "npm.version"] },
+    { "target": "<name>", "verbs": ["add"],    "description": "Install an npm package",           "mutates": ["npm.installed", "npm.version"], "resolves": "installed" },
     { "target": "<name>", "verbs": ["remove"], "description": "Uninstall an npm package",         "mutates": ["npm.installed"] },
     { "target": "<name>", "verbs": ["set"],    "description": "Pin to a version",                 "mutates": ["npm.version"], "args": { "version": { "type": "string" } } },
     { "target": "all",    "verbs": ["set"],    "description": "Update all outdated packages",     "mutates": ["npm.installed", "npm.version"], "args": { "version": { "type": "string", "enum": ["latest"] } } }

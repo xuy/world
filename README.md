@@ -54,6 +54,14 @@ world await process 5678 stopped
 
 `observe` reads structured state. `act` changes it through a declared verb. `await` blocks until a condition holds, using OS-native events where available (kqueue for process exit) and falling back to exponential backoff polling.
 
+How does the agent know to `await stopped` after `kill`? The spec tells it. Actions that produce async effects declare what confirms them:
+
+```json
+{ "verbs": ["kill"], "mutates": ["process.processes"], "resolves": "stopped" }
+```
+
+`resolves` means: this action's effect is async — `await` the named condition to confirm it landed. No `resolves` = synchronous, the exit code is the answer.
+
 ### Session domains
 
 Most domains are ambient — processes, disks, and networks always have state to observe. Some domains are different: they start empty and must be populated by an action before observation is meaningful. A browser has no page until you open one. An SSH connection has no host until you connect.
@@ -99,21 +107,21 @@ Fields that vary become `{mean, min, max, delta, rate_per_sec}`. Constant fields
 
 ## Domains
 
-| Domain | Default observation | Verbs |
-|--------|-------------------|-------|
-| **process** | Top 20 by CPU | kill, remove, set |
-| **network** | Interfaces + DNS + gateway + connectivity | reset, enable, disable, remove, restart |
-| **container** | Running containers | enable, disable, restart, remove, add, clear |
-| **service** | Running non-Apple services | restart, enable, disable, set |
-| **disk** | Mounts + space usage | clear, reset, add, remove |
-| **brew** | Installed packages | add, remove, reset, set |
-| **pip** | Installed packages + virtualenv | add, remove, set |
-| **npm** | Project packages (or global) | add, remove, set |
-| **printer** | Printers + status | clear, restart, set, reset |
-| **log** | Recent errors | *(read-only)* |
-| **browser** *(session)* | Page URL + accessibility tree | open, close, click, fill, select, hover, scroll, press, eval |
-| **ssh** *(session)* | Remote host info + disk usage | open, close, exec |
-| **home** *(session)* | Lights, climate, sensors, locks, covers | open, close, enable, disable, set, lock, unlock |
+| Domain | Default observation | Verbs | Await conditions |
+|--------|-------------------|-------|-----------------|
+| **process** | Top 20 by CPU | kill, remove, set | running, stopped, port_free |
+| **network** | Interfaces + DNS + VPNs + connectivity | reset, enable, disable, remove, restart | host_reachable, dns_resolves, internet_reachable, port_open |
+| **container** | Running containers | enable, disable, restart, remove, add, clear | running, stopped, healthy, image_exists, volume_exists |
+| **service** | Running non-Apple services | restart, enable, disable, set | healthy, stopped |
+| **disk** | Mounts + space usage | clear, reset, add, remove | writable, mounted, unmounted |
+| **brew** | Installed packages | add, remove, reset, set | installed, uninstalled |
+| **pip** | Installed packages + virtualenv | add, remove, set | installed |
+| **npm** | Project packages (or global) | add, remove, set | installed |
+| **printer** | Printers + status | clear, restart, set, reset | prints |
+| **log** | Recent errors | *(read-only)* | |
+| **browser** *(session)* | Page URL + accessibility tree | open, close, click, fill, select, hover, scroll, press, eval | loaded, title_contains |
+| **ssh** *(session)* | Remote host info + disk usage | open, close, exec | connected |
+| **home** *(session)* | Lights, climate, sensors, locks, covers | open, close, enable, disable, set, lock, unlock | connected |
 
 Package managers are separate domains (brew, pip, npm) rather than a single "package" abstraction, because they have different scopes (system, virtualenv, node_modules) and the handler should use the runtime it observes.
 

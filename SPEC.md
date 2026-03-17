@@ -5,7 +5,7 @@
 ```
 world observe DOMAIN [TARGET] [--limit N] [--since T]
 world act     DOMAIN TARGET VERB [KEY=VALUE ...] [--dry-run]
-world await   DOMAIN CONDITION [TARGET] [--timeout N]
+world await   DOMAIN [TARGET] CONDITION [--timeout N]
 world sample  DOMAIN [TARGET] [--count N] [--interval T] [--limit N]
 world spec    [DOMAIN]
 ```
@@ -104,9 +104,11 @@ Pretty mode shows `output` as the header, then renders `details`.
 
 **Purpose**: Change state in a domain.
 
-**Grammar**: `world act DOMAIN TARGET VERB [KEY=VALUE ...] [--dry-run]`
+**Grammar**: `world act DOMAIN [TARGET] VERB [KEY=VALUE ...] [--dry-run]`
 
-TARGET and VERB are both required positional arguments.
+Two forms:
+- **Targeted**: `world act process 1234 kill` — act on a specific target
+- **Targetless**: `world act browser open https://...` — session actions without a target
 
 ### Verb resolution
 
@@ -151,10 +153,21 @@ Describe what would happen without doing it. Output must include `"dry_run": tru
 
 **Purpose**: Block until a condition becomes true.
 
-**Grammar**: `world await DOMAIN CONDITION [TARGET] [--timeout N]`
+**Grammar**: `world await DOMAIN [TARGET] CONDITION [--timeout N]`
 
-CONDITION is a positional argument — the name of the condition to wait for.
-TARGET is an optional positional — what to check the condition against.
+Two forms:
+- **Targeted**: `world await process 1234 stopped` — wait for PID 1234 to stop
+- **Targetless**: `world await network internet_reachable` — wait for internet
+
+### resolves
+
+Actions that produce async effects declare what condition confirms them:
+
+```json
+{ "target": "<pid>", "verbs": ["kill"], "mutates": ["process.processes"], "resolves": "stopped" }
+```
+
+The agent reads `resolves` and knows to `await stopped` after killing. No `resolves` = synchronous — the exit code is sufficient.
 
 ### Conditions
 
@@ -164,13 +177,16 @@ Each domain declares its valid conditions:
 |---|---|
 | process | running, stopped, port_free |
 | network | host_reachable, dns_resolves, internet_reachable, port_open |
-| container | running, healthy, image_exists, volume_exists |
-| service | healthy |
-| disk | writable |
-| brew | installed |
-| pip | installed |
+| container | running, stopped, healthy, image_exists, volume_exists |
+| service | healthy, stopped |
+| disk | writable, mounted, unmounted |
+| brew | installed, uninstalled |
 | npm | installed |
+| pip | installed |
 | printer | prints |
+| browser | loaded, title_contains |
+| ssh | connected |
+| home | connected |
 
 Invalid conditions return an error listing available ones.
 
